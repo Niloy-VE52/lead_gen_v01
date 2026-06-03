@@ -1,0 +1,240 @@
+import os
+import traceback
+from groq import Groq
+from scraper import scrape_linkedin_jobs, check_repeatability, is_company_size_valid
+from job_store import job_status_store
+from sheets_helper import (
+    get_gc,
+    get_or_create_sheet,
+    get_existing_job_ids,
+    get_all_rows_as_dicts,
+    append_rows_safe,
+    upsert_scoring_row,
+    SCRAPED_SHEET_NAME,
+    SCORING_SHEET_NAME,
+    SCRAPED_HEADERS,
+    SCORING_HEADERS,
+)
+from scraper import run_scraper
+from review_finder import enrich_reviews
+from funding_checker import enrich_funding
+from scoring import LeadScorer
+
+
+# ── LLM client (Groq) ─────────────────────────────────────────
+
+def build_llm_client():
+    groq = Groq()  # reads GROQ_API_KEY from env
+
+    def llm_client(prompt: str) -> str:
+        response = groq.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+        )
+        return response.choices[0].message.content.strip()
+
+    return llm_client
+
+
+# ── Status helper ─────────────────────────────────────────────
+
+def update_status(run_id: str, step: str, extra: dict = None):
+    entry = job_status_store.get(run_id, {})
+    entry["step"] = step
+    entry["status"] = "running"
+    if extra:
+        entry.update(extra)
+    job_status_store[run_id] = entry
+    print(f"[{run_id}] {step}")
+
+
+def finish(run_id: str, message: str, data: dict = None):
+    entry = job_status_store.get(run_id, {})
+    entry["status"] = "done"
+    entry["step"] = message
+    entry["message"] = message
+    if data:
+        entry.update(data)
+    job_status_store[run_id] = entry
+    print(f"[{run_id}] ✅ {message}")
+
+
+def fail(run_id: str, error: str):
+    entry = job_status_store.get(run_id, {})
+    entry["status"] = "error"
+    entry["error"] = error
+    entry["step"] = f"❌ Failed: {error}"
+    job_status_store[run_id] = entry
+    print(f"[{run_id}] ❌ {error}")
+
+
+# ── Pipeline 1: Scrape + Enrich → Scraped_Jobs_V05 ────────────
+
+def run_full_pipeline(run_id: str, config: dict):
+    try:
+        # ── Step 1: Scrape LinkedIn ────────────────────────────
+        def cb(msg):
+            update_status(run_id, msg)
+
+        update_status(run_id, "🚀 Scraping LinkedIn jobs...")
+        extracted = scrape_linkedin_jobs(config, status_cb=cb)
+
+        if not extracted:
+            finish(run_id, "⚠️ No jobs scraped from LinkedIn", {"jobs_added": 0})
+            return
+
+        # ── Step 2: Filter by size BEFORE repeatability ────────
+        min_emp = config.get("min_employees", 50)
+        max_emp = config.get("max_employees", 1000)
+
+        size_filtered = []
+        for row in extracted:
+            emp = row.get("companyEmployeeCount", "")
+            if not is_company_size_valid(emp, min_emp, max_emp):
+                update_status(run_id, f"⛔ Size filter: {row.get('companyName')} ({emp})")
+                continue
+            size_filtered.append(row)
+
+        if not size_filtered:
+            finish(run_id, "⚠️ No jobs passed size filter", {"jobs_added": 0})
+            return
+
+        # ── Step 3: Repeatability check ────────────────────────
+        update_status(run_id, f"🔍 Running repeatability on {len(size_filtered)} jobs...")
+        enriched = check_repeatability(size_filtered, status_cb=cb)
+
+        # ── Step 4: Reviews ────────────────────────────────────
+        update_status(run_id, f"📝 Fetching reviews for {len(enriched)} jobs...")
+        enriched = enrich_reviews(enriched, status_cb=cb)
+
+        # ── Step 5: Funding ────────────────────────────────────
+        update_status(run_id, f"💰 Fetching funding for {len(enriched)} jobs...")
+        enriched = enrich_funding(enriched, status_cb=cb)
+
+        # ── Step 6: NOW open Google Sheet ─────────────────────
+        update_status(run_id, "📄 Opening Google Sheet: Scraped_Jobs_V05...")
+        gc = get_gc()
+        _, ws = get_or_create_sheet(gc, SCRAPED_SHEET_NAME, SCRAPED_HEADERS)
+        existing_ids = get_existing_job_ids(ws)
+
+        # Filter out duplicates that appeared in sheet since we started
+        new_rows = [
+            row for row in enriched
+            if str(row.get("jobId", "")) not in existing_ids
+        ]
+
+        if not new_rows:
+            finish(run_id, "⏭️ No new jobs after duplicate check", {"jobs_added": 0})
+            return
+
+        # ── Step 7: Write to sheet ─────────────────────────────
+        update_status(run_id, f"📊 Writing {len(new_rows)} jobs to sheet...")
+        sheet_rows = [
+            [row.get(h, "") for h in SCRAPED_HEADERS]
+            for row in new_rows
+        ]
+        append_rows_safe(ws, sheet_rows, SCRAPED_HEADERS)
+
+        finish(
+            run_id,
+            f"✅ Done — {len(new_rows)} jobs saved to {SCRAPED_SHEET_NAME}",
+            {"jobs_added": len(new_rows)},
+        )
+
+    except Exception as e:
+        fail(run_id, f"{e}\n{traceback.format_exc()}")
+
+
+# ── Pipeline 2: Score jobs → Job_Scoring_List ─────────────────
+
+def run_scoring_pipeline(run_id: str, target_job_id: str | None = None):
+    try:
+        # ── Read source sheet ──────────────────────────────────
+        update_status(run_id, f"📄 Reading {SCRAPED_SHEET_NAME}...")
+        gc = get_gc()
+        _, src_ws = get_or_create_sheet(gc, SCRAPED_SHEET_NAME, SCRAPED_HEADERS)
+        all_jobs = get_all_rows_as_dicts(src_ws)
+
+# ── DEBUG: print first job to see what keys/values we get ──
+        if all_jobs:
+            print(f"[{run_id}] DEBUG first job keys: {list(all_jobs[0].keys())}")
+            print(f"[{run_id}] DEBUG first job sample: companyName={all_jobs[0].get('companyName')} | jobTitle={all_jobs[0].get('jobTitle')}")
+        else:
+            print(f"[{run_id}] DEBUG all_jobs is empty!")
+
+        # ── Read scoring sheet ─────────────────────────────────
+        update_status(run_id, f"📄 Opening {SCORING_SHEET_NAME}...")
+        gc = get_gc()
+        _, score_ws = get_or_create_sheet(gc, SCORING_SHEET_NAME, SCORING_HEADERS)
+        already_scored_count = len(get_all_rows_as_dicts(score_ws))
+
+        # ── Pick only rows that haven't been scored yet ────────
+        # Simply skip the first N rows that already have scores
+        to_score = all_jobs[already_scored_count:]
+
+        if not to_score:
+            finish(run_id, "⏭️ All jobs already scored", {"scored": 0})
+            return
+
+        update_status(run_id, f"🤖 Scoring {len(to_score)} new jobs...")
+
+        scorer = LeadScorer(llm_client=build_llm_client())
+        scored = 0
+
+        for job in to_score:
+            company = job.get("companyName", "?")
+            title   = job.get("jobTitle", "?")
+            update_status(run_id, f"🤖 Scoring: {title} @ {company}")
+
+            result = scorer.score_lead(job)
+
+            score_row = {
+                "jobTitle":                  job.get("jobTitle", ""),
+                "companyName":               job.get("companyName", ""),
+                "location":                  job.get("location", ""),
+                "workType":                  job.get("workType", ""),
+                "experienceLevel":           job.get("experienceLevel", ""),
+                "sector":                    job.get("sector", ""),
+                "companyEmployeeCount":      job.get("companyEmployeeCount", ""),
+                "latest_funding_stage":      job.get("latest_funding_stage", ""),
+                "latest_funding_round_date": job.get("latest_funding_round_date", ""),
+                **result,
+            }
+
+            # Fresh connection for every write
+            _upsert_with_retry(run_id, score_row)
+            scored += 1
+
+            print(
+                f"[{run_id}] {company} | {title} → "
+                f"{result['total_score']} | {result['decision']} ({result['priority']})"
+            )
+
+        finish(
+            run_id,
+            f"✅ Scored {scored} jobs → {SCORING_SHEET_NAME}",
+            {"scored": scored},
+        )
+
+    except Exception as e:
+        fail(run_id, f"{e}\n{traceback.format_exc()}")
+
+
+# Simplified _upsert_with_retry — just appends
+def _upsert_with_retry(run_id: str, score_row: dict, max_attempts: int = 3):
+    import time
+    last_error = None
+    for attempt in range(max_attempts):
+        try:
+            gc = get_gc()
+            _, score_ws = get_or_create_sheet(gc, SCORING_SHEET_NAME, SCORING_HEADERS)
+            row_data = [score_row.get(h, "") for h in SCORING_HEADERS]
+            score_ws.append_row(row_data, value_input_option="RAW")
+            return
+        except Exception as e:
+            last_error = e
+            wait = 5 * (attempt + 1)
+            print(f"[{run_id}] ⚠️ Write failed (attempt {attempt+1}/3), retrying in {wait}s... {e}")
+            time.sleep(wait)
+    raise RuntimeError(f"Sheet write failed after {max_attempts} attempts: {last_error}")
