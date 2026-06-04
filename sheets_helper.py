@@ -25,7 +25,7 @@ SCRAPED_HEADERS = [
 ]
 
 SCORING_HEADERS = [
-    "jobTitle", "companyName", "location",
+    "jobTitle", "jobUrl", "companyName", "location",
     "workType", "experienceLevel", "sector",
     "companyEmployeeCount","Execution Signal", "Hiring Intent", "Company Fit",
     "Remote Readiness", "Buying Trigger", "Repost Bonus",
