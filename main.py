@@ -11,6 +11,15 @@ from job_store import job_status_store
 
 app = FastAPI(title="Job Scraper & Scorer API", version="1.0.0")
 
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ── Request Models ─────────────────────────────────────────────
 class ScrapeInput(BaseModel):
