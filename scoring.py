@@ -126,17 +126,22 @@ Return ONLY a valid JSON object, no explanation:
         d7 = self.score_enrichment_confidence(row)
         reason = llm_scores["Reason"]
 
-        scores = {
-            "Execution Signal": d1,
-            "Hiring Intent": d2,
-            "Company Fit": d3,
-            "Buying Trigger": d5
-        }
-        zero_reasons = [name for name, value in scores.items() if value == 0]
+        # scores = {
+        #     "Execution Signal": d1,
+        #     "Hiring Intent": d2,
+        #     "Company Fit": d3,
+        #     "Buying Trigger": d5
+        # }
+        # zero_reasons = [name for name, value in scores.items() if value == 0]
 
-        if zero_reasons:
+        # if zero_reasons:
+        #     d1 = d2 = d3 = d4 = d5 = d6 = d7 = 0
+        #     reason = f"{', '.join(zero_reasons)} is 0, so all scores are 0 and lead is rejected."
+        if d2 == 0:
+            reason = "As Hiring Intent is 0, everything is 0"
+
+        if 0 in (d1, d2, d3, d5):
             d1 = d2 = d3 = d4 = d5 = d6 = d7 = 0
-            reason = f"{', '.join(zero_reasons)} is 0, so all scores are 0 and lead is rejected."
 
         total = d1 + d2 + d3 + d4 + d5 + d6 + d7
         decision, priority = self.get_decision(total)
