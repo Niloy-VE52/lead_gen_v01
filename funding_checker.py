@@ -43,21 +43,21 @@ def get_company_funding(domain: str) -> dict:
 
         amount   = latest_event.get("amount") or ""
         currency = latest_event.get("currency") or ""
-        last_amount_concat = f"{amount} {currency}".strip() if (amount or currency) else ""
+        last_amount_concat = f"{amount} {currency}".strip() if amount else "not found"
 
         return {
-            "total_funding":               org.get("total_funding_printed", ""),
-            "latest_funding_round_date":   org.get("latest_funding_round_date", ""),
-            "latest_funding_stage":        org.get("latest_funding_stage", ""),
+            "total_funding":               org.get("total_funding_printed", "") or "not found",
+            "latest_funding_round_date":   org.get("latest_funding_round_date", "") or "not found",
+            "latest_funding_stage":        org.get("latest_funding_stage", "") or "not found",
             "latest_funding":              last_amount_concat,
         }
     except Exception as e:
         print(f"❌ Apollo lookup failed for domain '{domain}': {e}")
         return {
-            "total_funding": "",
-            "latest_funding_round_date": "",
-            "latest_funding_stage": "",
-            "latest_funding": "",
+            "total_funding": "not found",
+            "latest_funding_round_date": "not found",
+            "latest_funding_stage": "not found",
+            "latest_funding": "not found",
         }
 
 
@@ -102,8 +102,8 @@ def enrich_funding(rows: list[dict], status_cb=None) -> list[dict]:
         else:
             if status_cb:
                 status_cb(f"⚠️ No domain found for {company}")
-            funding = {"total_funding": "", "latest_funding_round_date": "",
-                       "latest_funding_stage": "", "latest_funding": ""}
+            funding = {"total_funding": "not found", "latest_funding_round_date": "not found",
+                       "latest_funding_stage": "not found", "latest_funding": "not found"}
 
         cache[company] = funding
         row.update(funding)

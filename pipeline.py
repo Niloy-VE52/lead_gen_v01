@@ -19,20 +19,23 @@ from scraper import run_scraper
 from review_finder import enrich_reviews
 from funding_checker import enrich_funding
 from scoring import LeadScorer
-
+from openai import OpenAI
 
 # ── LLM client (Groq) ─────────────────────────────────────────
 
 def build_llm_client():
-    groq = Groq()  # reads GROQ_API_KEY from env
+    client = OpenAI()
 
     def llm_client(prompt: str) -> str:
-        response = groq.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0,
+        response = client.chat.completions.create(
+            model="gpt-5-mini",
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"}
         )
-        return response.choices[0].message.content.strip()
+
+        return response.choices[0].message.content
 
     return llm_client
 

@@ -55,7 +55,7 @@ FIELDS = [
     "jobId", "jobTitle", "jobUrl", "jobDescription",
     "companyName", "location", "publishedAt", "publishedDate",
     "contractType", "experienceLevel", "workType",
-    "sector", "searchString", "companyEmployeeCount",
+    "sector", "searchString", "companyEmployeeCount","companyDescription",
     "companyUrl", "companyWebsite",
 ]
 
@@ -131,7 +131,7 @@ def check_repeatability(extracted: list[dict], status_cb=None) -> list[dict]:
         repeat_input = {
             "job_title": job_title_str,
             "location": "",
-            "jobs_entries": 15,
+            "jobs_entries": 5,
             "company_names": [company],
             "start_jobs": 0,
         }

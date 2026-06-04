@@ -7,8 +7,8 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-SCRAPED_SHEET_NAME  = "Scraped_Jobs_V05"
-SCORING_SHEET_NAME  = "Job_Scoring_List"
+SCRAPED_SHEET_NAME  = "Scaped_v6"
+SCORING_SHEET_NAME  = "Score_Listing_v6"
 
 # ── Column definitions ─────────────────────────────────────────
 SCRAPED_HEADERS = [
@@ -16,6 +16,7 @@ SCRAPED_HEADERS = [
     "companyName", "location", "publishedAt", "publishedDate",
     "contractType", "experienceLevel", "workType",
     "sector", "searchString", "companyEmployeeCount",
+    "companyDescription",
     "companyUrl", "companyWebsite",
     "Repeatability",
     "Reviews",
@@ -26,11 +27,9 @@ SCRAPED_HEADERS = [
 SCORING_HEADERS = [
     "jobTitle", "companyName", "location",
     "workType", "experienceLevel", "sector",
-    "companyEmployeeCount", "latest_funding_stage",
-    "latest_funding_round_date",
-    "Execution Signal", "Hiring Intent", "Company Fit",
+    "companyEmployeeCount","Execution Signal", "Hiring Intent", "Company Fit",
     "Remote Readiness", "Buying Trigger", "Repost Bonus",
-    "Enrichment Confidence", "total_score", "decision", "priority",
+    "Enrichment Confidence", "total_score", "decision", "priority", "reason"
 ]
 
 
@@ -50,11 +49,16 @@ def get_or_create_sheet(gc, sheet_name: str, headers: list):
             # Completely empty — write header
             ws.append_row(headers, value_input_option="RAW")
             print(f"   📋 Header written to empty sheet: {sheet_name}")
+            format_header_row(ws)
 
         elif existing[0] != headers:
             # First row is not the header — insert it
             ws.insert_row(headers, index=1, value_input_option="RAW")
             print(f"   ⚠️ Header was missing in {sheet_name} — inserted at row 1")
+            format_header_row(ws)
+        else:
+            # Header already exists, format it anyway
+            format_header_row(ws)
 
         return spreadsheet, ws
 
@@ -64,6 +68,43 @@ def get_or_create_sheet(gc, sheet_name: str, headers: list):
         ws.append_row(headers, value_input_option="RAW")
         print(f"   🆕 Created new sheet: {sheet_name}")
         return spreadsheet, ws
+
+
+def format_header_row(ws):
+    """Format the header row: yellow background, centered, bold, size 16"""
+    num_cols = len(ws.row_values(1))
+    
+    requests = [
+        {
+            "repeatCell": {
+                "range": {
+                    "sheetId": ws.id,
+                    "startRowIndex": 0,
+                    "endRowIndex": 1,
+                },
+                "cell": {
+                    "userEnteredFormat": {
+                        "backgroundColor": {
+                            "red": 1.0,      # Yellow = red + green
+                            "green": 1.0,
+                            "blue": 0.0,
+                            "alpha": 1.0
+                        },
+                        "textFormat": {
+                            "bold": True,
+                            "fontSize": 16
+                        },
+                        "horizontalAlignment": "CENTER",
+                        "verticalAlignment": "MIDDLE"
+                    }
+                },
+                "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)"
+            }
+        }
+    ]
+    
+    ws.spreadsheet.batch_update({"requests": requests})
+    print(f"   🎨 Header formatted: yellow background, centered, bold, size 16")
 
 
 def get_existing_job_ids(ws) -> set:
@@ -120,6 +161,7 @@ def upsert_scoring_row(ws, headers: list, score_data: dict):
     all_values = ws.get_all_values()
     if not all_values:
         ws.append_row(headers)
+        format_header_row(ws)
         all_values = [headers]
 
     header = all_values[0]

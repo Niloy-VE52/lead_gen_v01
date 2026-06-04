@@ -22,12 +22,20 @@ Industry: {row.get('sector', '')}
 Employees: {row.get('companyEmployeeCount', '')}
 Funding Stage: {row.get('latest_funding_stage', '')}
 Last Funding Date: {row.get('latest_funding_round_date', '')}
+Company Description : {row.get('companyDescription')}
 
 --- SIGNALS ---
 Review Summary: {str(row.get('Reviews', ''))[:800]}
 
 --- SCORING RULES ---
+Read the company desription,If the Company Description suggests that the company is either any of this 3 types 
+mentioned below then score D1, D3, D5 as 0:
+1. staffing, recruiting, HR, or outsourcing company,  
+2. consulting, services, solutions, or agency firmCompany is a marketplace or platform connecting freelancers
+3. Company is a marketplace or platform connecting freelancers
 
+
+Otherwise:
 D1 - Execution Signal (0-3):
 3 = Customer Support, Technical Support, QA, Implementation, Operations Associate
 2 = Similar support/operations role
@@ -45,8 +53,10 @@ D5 - Buying Trigger (0-3):
 1 = Weak Trigger
 0 = No Trigger
 
+Reason: (Summery About Scores why it is given)
+
 Return ONLY a valid JSON object, no explanation:
-{{"D1": <int>, "D3": <int>, "D5": <int>}}
+{{"D1": <int>, "D3": <int>, "D5": <int>, "Reason":<string>}}
 """
         response = self.llm(prompt)
         try:
@@ -58,9 +68,10 @@ Return ONLY a valid JSON object, no explanation:
                 "D1": max(0, min(int(scores["D1"]), 3)),
                 "D3": max(0, min(int(scores["D3"]), 2)),
                 "D5": max(0, min(int(scores["D5"]), 3)),
+                "Reason": scores["Reason"]
             }
         except Exception:
-            return {"D1": 0, "D3": 0, "D5": 0}
+            return {"D1": 0, "D3": 0, "D5": 0,"Reason":"None"}
 
     # ── Rule-based dimensions ─────────────────────────────────
 
@@ -113,6 +124,19 @@ Return ONLY a valid JSON object, no explanation:
         d5 = llm_scores["D5"]
         d6 = self.score_repost_bonus(d2)
         d7 = self.score_enrichment_confidence(row)
+        reason = llm_scores["Reason"]
+
+        scores = {
+            "Execution Signal": d1,
+            "Hiring Intent": d2,
+            "Company Fit": d3,
+            "Buying Trigger": d5
+        }
+        zero_reasons = [name for name, value in scores.items() if value == 0]
+
+        if zero_reasons:
+            d1 = d2 = d3 = d4 = d5 = d6 = d7 = 0
+            reason = f"{', '.join(zero_reasons)} is 0, so all scores are 0 and lead is rejected."
 
         total = d1 + d2 + d3 + d4 + d5 + d6 + d7
         decision, priority = self.get_decision(total)
@@ -128,6 +152,7 @@ Return ONLY a valid JSON object, no explanation:
             "total_score":            total,
             "decision":               decision,
             "priority":               priority,
+            "reason":                 reason
         }
 
     # ── Decision logic ────────────────────────────────────────
