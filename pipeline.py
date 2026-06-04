@@ -194,14 +194,13 @@ def run_scoring_pipeline(run_id: str, target_job_id: str | None = None):
 
             score_row = {
                 "jobTitle":                  job.get("jobTitle", ""),
+                "jobUrl":                    job.get("jobUrl", ""),
                 "companyName":               job.get("companyName", ""),
                 "location":                  job.get("location", ""),
                 "workType":                  job.get("workType", ""),
                 "experienceLevel":           job.get("experienceLevel", ""),
                 "sector":                    job.get("sector", ""),
                 "companyEmployeeCount":      job.get("companyEmployeeCount", ""),
-                "latest_funding_stage":      job.get("latest_funding_stage", ""),
-                "latest_funding_round_date": job.get("latest_funding_round_date", ""),
                 **result,
             }
 
