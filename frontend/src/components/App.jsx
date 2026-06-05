@@ -48,7 +48,7 @@ export default function App() {
     );
 
     return () => timers.forEach(clearInterval);
-  }, [runs.length]);
+  }, [runs]);
 
   const launch = async () => {
     setError(null);
