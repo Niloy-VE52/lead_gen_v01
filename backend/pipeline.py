@@ -1,9 +1,9 @@
 import os
 import traceback
 from groq import Groq
-from scraper import scrape_linkedin_jobs, check_repeatability, is_company_size_valid
-from job_store import job_status_store
-from sheets_helper import (
+from backend.scraper import scrape_linkedin_jobs, check_repeatability, is_company_size_valid
+from backend.job_store import job_status_store
+from backend.sheets_helper import (
     get_gc,
     get_or_create_sheet,
     get_existing_job_ids,
@@ -15,10 +15,10 @@ from sheets_helper import (
     SCRAPED_HEADERS,
     SCORING_HEADERS,
 )
-from scraper import run_scraper
-from review_finder import enrich_reviews
-from funding_checker import enrich_funding
-from scoring import LeadScorer
+from backend.scraper import run_scraper
+from backend.review_finder import enrich_reviews
+from backend.funding_checker import enrich_funding
+from backend.scoring import LeadScorer
 from openai import OpenAI
 
 # ── LLM client (Groq) ─────────────────────────────────────────
