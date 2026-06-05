@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 import uuid
 import asyncio
+import os
 
 from backend.pipeline import run_full_pipeline, run_scoring_pipeline
 from backend.job_store import job_status_store
@@ -13,14 +14,15 @@ app = FastAPI(title="Job Scraper & Scorer API", version="1.0.0")
 
 from fastapi.middleware.cors import CORSMiddleware
 
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # ── Request Models ─────────────────────────────────────────────
 class ScrapeInput(BaseModel):
     keywords: List[str] = ["Customer Support Specialist", "Technical Support Specialist", "Support Specialist"]
