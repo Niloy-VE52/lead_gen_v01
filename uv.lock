@@ -30,25 +30,24 @@ wheels = [
 
 [[package]]
 name = "apify-client"
-version = "1.8.1"
+version = "1.6.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "apify-shared" },
     { name = "httpx" },
-    { name = "more-itertools" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9c/d7/37d955bff90f6dfc353642e4b4075db3dd9abf8f5111ed35152be3dfc3da/apify_client-1.8.1.tar.gz", hash = "sha256:2be1be7879570655bddeebf126833efe94cabb95b3755592845e92c20c70c674", size = 48422, upload-time = "2024-09-17T14:56:31.273Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d4/58/83d54aace9ae98981df5aaf455d77dff6882fc5261f9ee5db7d5b35bd95d/apify_client-1.6.4.tar.gz", hash = "sha256:b7b6b67a9631e86e829b42079e2864fec46a5be6fd0b5ccde941453006f494bb", size = 46705, upload-time = "2024-02-27T10:26:56.555Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/15/0b/42bb740ba9ff4cd540cc3c22687e3c07a823a5bdecb18a714de6df183a3a/apify_client-1.8.1-py3-none-any.whl", hash = "sha256:cfa6df3816c436204e37457fba28981a0ef6a7602cde372463f0f078eee64747", size = 73532, upload-time = "2024-09-17T14:56:28.81Z" },
+    { url = "https://files.pythonhosted.org/packages/1b/d9/97c1f645a5a2238dc3bef8b630e55c4db6f97df13d3284834b3c42cf35a4/apify_client-1.6.4-py3-none-any.whl", hash = "sha256:9846202fadbbcfff2019e817abdd00fb336d9d936c45c8abc338e35ab82d2977", size = 70566, upload-time = "2024-02-27T10:26:54.206Z" },
 ]
 
 [[package]]
 name = "apify-shared"
-version = "2.2.0"
+version = "1.1.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ec/88/8833a8bba9044ce134bb2e57fbb626f1ddbeecac964bc2e2b652a50fadd1/apify_shared-2.2.0.tar.gz", hash = "sha256:ad48a96084e3c38faa1bac723a47929a1bb2c771544da2f0cb503eabdecfc79a", size = 45534, upload-time = "2026-01-15T10:17:14.592Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c9/d6/fadcae478f8c5da0c5117c2b199ef2958ddca2ece907d49ba1e5a522c725/apify_shared-1.1.2.tar.gz", hash = "sha256:3f98f526635c4c3f92c1496916513a1c4013bb47158d7e0f914df8987147366c", size = 13483, upload-time = "2024-07-04T15:13:42.681Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/75/7c/9607852e2bb324fa40a5b967e162dea1b3c76b429cf90b602e4a202c101a/apify_shared-2.2.0-py3-none-any.whl", hash = "sha256:667d4d00ac3cf8091702640547387ac5c72a1df402bbb3923f7a401bc25d9d50", size = 16408, upload-time = "2026-01-15T10:17:13.103Z" },
+    { url = "https://files.pythonhosted.org/packages/5b/22/6d9ef9524e15de23acdc1452be7badceaa8e6b3fff95c484bf5bf289d6b1/apify_shared-1.1.2-py3-none-any.whl", hash = "sha256:a422b4cb3ea536257f0c0dd3778b3c22ec6647708d2fc06c97fe0c9fe183c3c9", size = 12294, upload-time = "2024-07-04T15:13:41.2Z" },
 ]
 
 [[package]]
@@ -428,7 +427,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "apify-client", specifier = "==1.8.1" },
+    { name = "apify-client", specifier = "==1.6.4" },
     { name = "dotenv", specifier = ">=0.9.9" },
     { name = "fastapi", specifier = "==0.115.0" },
     { name = "google-auth", specifier = "==2.34.0" },
@@ -439,15 +438,6 @@ requires-dist = [
     { name = "python-dotenv", specifier = "==1.0.1" },
     { name = "requests", specifier = "==2.32.3" },
     { name = "uvicorn", extras = ["standard"], specifier = "==0.30.6" },
-]
-
-[[package]]
-name = "more-itertools"
-version = "11.1.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/de/1d/f4da6f02cdffe04d6362210b807146a26044c88d839208aec273bb0d9184/more_itertools-11.1.0.tar.gz", hash = "sha256:48e8f4d9e7e5878571ecf6f2b4e57634f93cd474cc8cfbd2376f2d11b396e30d", size = 145772, upload-time = "2026-05-22T14:14:29.909Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e8/3d/1087453384dbde46a8c7f9356eead2c58be8a7bf156bca40243377c85715/more_itertools-11.1.0-py3-none-any.whl", hash = "sha256:4b65538ae22f6fed0ce4874efd317463a7489796a0939fa66824dd542125a192", size = 72226, upload-time = "2026-05-22T14:14:28.824Z" },
 ]
 
 [[package]]

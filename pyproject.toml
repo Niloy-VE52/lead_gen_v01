@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "apify-client==1.8.1",
+    "apify-client==1.6.4",
     "dotenv>=0.9.9",
     "fastapi==0.115.0",
     "google-auth==2.34.0",
