@@ -1,4 +1,4 @@
-export const BASE_URL = "http://localhost:8000";
+export const BASE_URL = "https://lead-gen-v01.onrender.com/";
 
 export async function apiPost(path, body) {
   const res = await fetch(`${BASE_URL}${path}`, {
