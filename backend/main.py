@@ -43,6 +43,10 @@ class ScoreInput(BaseModel):
 def root():
     return {"message": "Job Scraper & Scorer API is running 🚀"}
 
+@app.get("/debug-schema")
+async def debug_schema():
+    return ScrapeInput.model_json_schema()
+
 
 @app.post("/run-pipeline")
 async def run_pipeline(input_data: ScrapeInput, background_tasks: BackgroundTasks):
