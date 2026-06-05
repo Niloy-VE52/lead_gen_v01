@@ -6,8 +6,8 @@ from typing import Optional, List
 import uuid
 import asyncio
 
-from backend.pipeline import run_full_pipeline, run_scoring_pipeline
-from backend.job_store import job_status_store
+from pipeline import run_full_pipeline, run_scoring_pipeline
+from job_store import job_status_store
 
 app = FastAPI(title="Job Scraper & Scorer API", version="1.0.0")
 
