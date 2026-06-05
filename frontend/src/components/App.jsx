@@ -3,20 +3,27 @@ import { useState, useEffect, useCallback } from "react";
 import "../styles/global.css";
 import { apiPost, apiGet } from "../api/client";
 import { DEFAULT_CONFIG } from "../constants/defaults";
+import { saveRuns, loadRuns } from "../utils/storage";
 
-import Topbar from "./Topbar";
-import Sidebar from "./Sidebar";
-import RunPage from "./RunPage";
+import Topbar    from "./Topbar";
+import Sidebar   from "./Sidebar";
+import HomePage  from "./HomePage";
+import RunPage   from "./RunPage";
 import RunHistory from "./RunHistory";
 
 export default function App() {
   const [config, setConfig]           = useState(DEFAULT_CONFIG);
   const [activeRunId, setActiveRunId] = useState(null);
-  const [runs, setRuns]               = useState([]);
+  const [runs, setRuns]               = useState(() => loadRuns()); // ← seed from localStorage
   const [launching, setLaunching]     = useState(false);
   const [error, setError]             = useState(null);
-  const [tab, setTab]                 = useState("run");
+  const [tab, setTab]                 = useState("home");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Persist runs to localStorage whenever they change
+  useEffect(() => {
+    saveRuns(runs);
+  }, [runs]);
 
   const handleRunDone = useCallback((data) => {
     setRuns((prev) =>
@@ -24,6 +31,7 @@ export default function App() {
     );
   }, []);
 
+  // Background poll for any running runs (survives tab switches)
   useEffect(() => {
     const runningRuns = runs.filter((r) => r.status === "running");
     if (runningRuns.length === 0) return;
@@ -47,7 +55,12 @@ export default function App() {
     setLaunching(true);
     try {
       const res = await apiPost("/run-full", config);
-      const newRun = { run_id: res.run_id, status: "running", step: "Starting…" };
+      const newRun = {
+        run_id:    res.run_id,
+        status:    "running",
+        step:      "Starting…",
+        timestamp: Date.now(), // ← stored for 3-month expiry check
+      };
       setRuns((prev) => [...prev, newRun]);
       setActiveRunId(res.run_id);
       setTab("run");
@@ -75,6 +88,15 @@ export default function App() {
         />
 
         <div className="content">
+          {tab === "home" && (
+            <HomePage
+              runs={runs}
+              onNavigate={setTab}
+              onLaunch={launch}
+              launching={launching}
+            />
+          )}
+
           {tab === "run" && (
             <RunPage
               config={config}
@@ -89,7 +111,7 @@ export default function App() {
 
           {tab === "history" && (
             <>
-              <div className="section-heading">All Pipeline Runs — This Session</div>
+              <div className="section-heading">All Pipeline Runs</div>
               <RunHistory runs={runs} activeRunId={activeRunId} />
             </>
           )}
