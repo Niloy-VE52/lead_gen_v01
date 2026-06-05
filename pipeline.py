@@ -155,72 +155,172 @@ def run_scoring_pipeline(run_id: str, target_job_id: str | None = None):
     try:
         # ── Read source sheet ──────────────────────────────────
         update_status(run_id, f"📄 Reading {SCRAPED_SHEET_NAME}...")
+
         gc = get_gc()
-        _, src_ws = get_or_create_sheet(gc, SCRAPED_SHEET_NAME, SCRAPED_HEADERS)
+
+        _, src_ws = get_or_create_sheet(
+            gc,
+            SCRAPED_SHEET_NAME,
+            SCRAPED_HEADERS
+        )
+
         all_jobs = get_all_rows_as_dicts(src_ws)
 
-# ── DEBUG: print first job to see what keys/values we get ──
+        # Debug
         if all_jobs:
-            print(f"[{run_id}] DEBUG first job keys: {list(all_jobs[0].keys())}")
-            print(f"[{run_id}] DEBUG first job sample: companyName={all_jobs[0].get('companyName')} | jobTitle={all_jobs[0].get('jobTitle')}")
+            print(
+                f"[{run_id}] DEBUG first job keys: "
+                f"{list(all_jobs[0].keys())}"
+            )
+            print(
+                f"[{run_id}] DEBUG first job sample: "
+                f"companyName={all_jobs[0].get('companyName')} | "
+                f"jobTitle={all_jobs[0].get('jobTitle')}"
+            )
         else:
             print(f"[{run_id}] DEBUG all_jobs is empty!")
 
-        # ── Read scoring sheet ─────────────────────────────────
+        # ── Open scoring sheet ONCE ────────────────────────────
         update_status(run_id, f"📄 Opening {SCORING_SHEET_NAME}...")
-        gc = get_gc()
-        _, score_ws = get_or_create_sheet(gc, SCORING_SHEET_NAME, SCORING_HEADERS)
-        already_scored_count = len(get_all_rows_as_dicts(score_ws))
 
-        # ── Pick only rows that haven't been scored yet ────────
-        # Simply skip the first N rows that already have scores
+        _, score_ws = get_or_create_sheet(
+            gc,
+            SCORING_SHEET_NAME,
+            SCORING_HEADERS
+        )
+
+        already_scored_count = len(
+            get_all_rows_as_dicts(score_ws)
+        )
+
+        # ── Pick only unscored jobs ────────────────────────────
         to_score = all_jobs[already_scored_count:]
 
+        if target_job_id:
+            target_job_id = str(target_job_id).strip()
+
+            to_score = [
+                row
+                for row in all_jobs
+                if str(row.get("jobId", "")).strip() == target_job_id
+            ]
+
         if not to_score:
-            finish(run_id, "⏭️ All jobs already scored", {"scored": 0})
+            finish(
+                run_id,
+                "⏭️ All jobs already scored",
+                {"scored": 0}
+            )
             return
 
-        update_status(run_id, f"🤖 Scoring {len(to_score)} new jobs...")
+        update_status(
+            run_id,
+            f"🤖 Scoring {len(to_score)} new jobs..."
+        )
 
-        scorer = LeadScorer(llm_client=build_llm_client())
+        scorer = LeadScorer(
+            llm_client=build_llm_client()
+        )
+
+        rows_to_write = []
         scored = 0
 
-        for job in to_score:
+        # ── Score jobs ─────────────────────────────────────────
+        for idx, job in enumerate(to_score, start=1):
+
             company = job.get("companyName", "?")
-            title   = job.get("jobTitle", "?")
-            update_status(run_id, f"🤖 Scoring: {title} @ {company}")
+            title = job.get("jobTitle", "?")
 
-            result = scorer.score_lead(job)
-
-            score_row = {
-                "jobTitle":                  job.get("jobTitle", ""),
-                "jobUrl":                    job.get("jobUrl", ""),
-                "companyName":               job.get("companyName", ""),
-                "location":                  job.get("location", ""),
-                "workType":                  job.get("workType", ""),
-                "experienceLevel":           job.get("experienceLevel", ""),
-                "sector":                    job.get("sector", ""),
-                "companyEmployeeCount":      job.get("companyEmployeeCount", ""),
-                **result,
-            }
-
-            # Fresh connection for every write
-            _upsert_with_retry(run_id, score_row)
-            scored += 1
-
-            print(
-                f"[{run_id}] {company} | {title} → "
-                f"{result['total_score']} | {result['decision']} ({result['priority']})"
+            update_status(
+                run_id,
+                f"🤖 Scoring ({idx}/{len(to_score)}): "
+                f"{title} @ {company}"
             )
+
+            try:
+                result = scorer.score_lead(job)
+
+                score_row = {
+                    "jobTitle": job.get("jobTitle", ""),
+                    "jobUrl": job.get("jobUrl", ""),
+                    "companyName": job.get("companyName", ""),
+                    "location": job.get("location", ""),
+                    "workType": job.get("workType", ""),
+                    "experienceLevel": job.get("experienceLevel", ""),
+                    "sector": job.get("sector", ""),
+                    "companyEmployeeCount": job.get(
+                        "companyEmployeeCount", ""
+                    ),
+                    **result,
+                }
+
+                rows_to_write.append(
+                    [
+                        score_row.get(h, "")
+                        for h in SCORING_HEADERS
+                    ]
+                )
+
+                scored += 1
+
+                print(
+                    f"[{run_id}] "
+                    f"{company} | {title} → "
+                    f"{result['total_score']} | "
+                    f"{result['decision']} "
+                    f"({result['priority']})"
+                )
+
+            except Exception as e:
+                print(
+                    f"[{run_id}] ❌ Failed scoring "
+                    f"{company} | {title}: {e}"
+                )
+
+        # ── Single batch write ────────────────────────────────
+        if rows_to_write:
+
+            update_status(
+                run_id,
+                f"📊 Writing {len(rows_to_write)} rows..."
+            )
+
+            for attempt in range(3):
+                try:
+                    score_ws.append_rows(
+                        rows_to_write,
+                        value_input_option="RAW"
+                    )
+                    break
+
+                except Exception as e:
+
+                    if attempt == 2:
+                        raise
+
+                    import time
+
+                    wait = 5 * (attempt + 1)
+
+                    print(
+                        f"[{run_id}] ⚠️ Batch write failed "
+                        f"(attempt {attempt + 1}/3). "
+                        f"Retrying in {wait}s..."
+                    )
+
+                    time.sleep(wait)
 
         finish(
             run_id,
             f"✅ Scored {scored} jobs → {SCORING_SHEET_NAME}",
-            {"scored": scored},
+            {"scored": scored}
         )
 
     except Exception as e:
-        fail(run_id, f"{e}\n{traceback.format_exc()}")
+        fail(
+            run_id,
+            f"{e}\n{traceback.format_exc()}"
+        )
 
 
 # Simplified _upsert_with_retry — just appends

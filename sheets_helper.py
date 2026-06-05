@@ -58,7 +58,7 @@ def get_or_create_sheet(gc, sheet_name: str, headers: list):
             format_header_row(ws)
         else:
             # Header already exists, format it anyway
-            format_header_row(ws)
+            pass
 
         return spreadsheet, ws
 
@@ -70,41 +70,47 @@ def get_or_create_sheet(gc, sheet_name: str, headers: list):
         return spreadsheet, ws
 
 
+import time
+
 def format_header_row(ws):
-    """Format the header row: yellow background, centered, bold, size 16"""
-    num_cols = len(ws.row_values(1))
-    
-    requests = [
-        {
-            "repeatCell": {
-                "range": {
-                    "sheetId": ws.id,
-                    "startRowIndex": 0,
-                    "endRowIndex": 1,
-                },
-                "cell": {
-                    "userEnteredFormat": {
-                        "backgroundColor": {
-                            "red": 1.0,      # Yellow = red + green
-                            "green": 1.0,
-                            "blue": 0.0,
-                            "alpha": 1.0
+    for attempt in range(3):
+        try:
+            num_cols = len(ws.row_values(1))
+
+            requests = [
+                {
+                    "repeatCell": {
+                        "range": {
+                            "sheetId": ws.id,
+                            "startRowIndex": 0,
+                            "endRowIndex": 1,
                         },
-                        "textFormat": {
-                            "bold": True,
-                            "fontSize": 16
+                        "cell": {
+                            "userEnteredFormat": {
+                                "backgroundColor": {
+                                    "red": 1.0,
+                                    "green": 1.0,
+                                    "blue": 0.0
+                                },
+                                "textFormat": {
+                                    "bold": True,
+                                    "fontSize": 16
+                                }
+                            }
                         },
-                        "horizontalAlignment": "CENTER",
-                        "verticalAlignment": "MIDDLE"
+                        "fields": "userEnteredFormat"
                     }
-                },
-                "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)"
-            }
-        }
-    ]
-    
-    ws.spreadsheet.batch_update({"requests": requests})
-    print(f"   🎨 Header formatted: yellow background, centered, bold, size 16")
+                }
+            ]
+
+            ws.spreadsheet.batch_update({"requests": requests})
+            return
+
+        except Exception as e:
+            if attempt < 2:
+                time.sleep(5)
+            else:
+                raise
 
 
 def get_existing_job_ids(ws) -> set:
