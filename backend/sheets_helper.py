@@ -1,6 +1,7 @@
 import gspread
 from google.oauth2.service_account import Credentials
 import os
+import json
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -34,8 +35,11 @@ SCORING_HEADERS = [
 
 
 def get_gc():
-    creds_path = os.getenv("GOOGLE_CREDENTIALS_PATH", "credentials.json")
-    creds = Credentials.from_service_account_file(creds_path, scopes=SCOPES)
+    creds_info = json.loads(os.environ["GOOGLE_CREDENTIALS_JSON"])
+    creds = Credentials.from_service_account_info(
+        creds_info,
+        scopes=SCOPES,
+    )
     return gspread.authorize(creds)
 
 

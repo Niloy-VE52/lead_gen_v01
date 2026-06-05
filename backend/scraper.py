@@ -75,7 +75,7 @@ def scrape_linkedin_jobs(config: dict, status_cb=None) -> list[dict]:
         "experienceLevel": config.get("experience_levels", ["entry-level"]),
         "workType": config.get("work_types", ["remote"]),
         "salaryBase": "",
-        "maxItems": config.get("max_items", 10),
+        "maxItems": config.get("max_items", 15),
         "saveOnlyUniqueItems": False,
         "cleanDescription": True,
         "enrichCompanyData": True,
