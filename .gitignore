@@ -90,3 +90,4 @@ frontend/build/
 *.tmp
 *.temp
 *.bak
+testing/

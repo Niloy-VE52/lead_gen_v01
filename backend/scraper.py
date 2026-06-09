@@ -4,6 +4,7 @@ import re
 import json
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs, unquote
+from rapidfuzz import fuzz
 
 
 def get_client():
@@ -131,7 +132,7 @@ def check_repeatability(extracted: list[dict], status_cb=None) -> list[dict]:
         repeat_input = {
             "job_title": job_title_str,
             "location": "",
-            "jobs_entries": 5,
+            "jobs_entries": 15,
             "company_names": [company],
             "start_jobs": 0,
         }
@@ -151,12 +152,18 @@ def check_repeatability(extracted: list[dict], status_cb=None) -> list[dict]:
         company   = row["companyName"]
         job_title = normalize(row.get("jobTitle") or "")
         titles_list = company_job_titles.get(company, [])
-        keywords = [w for w in job_title.split() if w not in STOP_WORDS and len(w) > 2]
         count = sum(
-            1 for t in titles_list
-            if any(kw in normalize(t) for kw in keywords)
+            1
+            for t in titles_list
+            if fuzz.token_sort_ratio(
+                job_title,
+                normalize(t)
+            ) >= 80
         )
-        row["Repeatability"] = count
+        if count>0:
+            row["Repeatability"] = count-1
+        else:
+            row["Repeatability"] = count
 
     return extracted
 
