@@ -30,7 +30,7 @@ SCORING_HEADERS = [
     "workType", "experienceLevel", "sector",
     "companyEmployeeCount","Execution Signal", "Hiring Intent", "Company Fit",
     "Remote Readiness", "Buying Trigger", "Repost Bonus",
-    "Enrichment Confidence", "total_score", "decision", "priority", "reason"
+    "Enrichment Confidence", "total_score", "decision", "priority", "reason", "Date"
 ]
 
 
