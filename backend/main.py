@@ -2,7 +2,7 @@ from fastapi import FastAPI, BackgroundTasks, HTTPException
 
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Union
 import uuid
 import asyncio
 import os
@@ -25,10 +25,10 @@ app.add_middleware(
 )
 # ── Request Models ─────────────────────────────────────────────
 class ScrapeInput(BaseModel):
-    keywords: List[str] = ["Customer Support Specialist", "Technical Support Specialist", "Support Specialist"]
+    keywords: Union[List[str], str] = ["Customer Support Specialist"]
     location: str = "Europe"
-    experience_levels: List[str] = ["entry-level", "associate"]
-    work_types: List[str] = ["remote"]
+    experience_levels: Union[List[str], str] = ["entry-level", "associate"]
+    work_types: Union[List[str], str] = ["remote"]
     published_at: str = "r604800"   # last 7 days
     max_items: int = 10
     min_employees: int = 50

@@ -1,5 +1,5 @@
 export const DEFAULT_CONFIG = {
-  keywords: ["Customer Support Specialist", "Technical Support Specialist", "Support Specialist"],
+  keywords: ["Customer Support Specialist"],
   location: "Europe",
   experience_levels: ["entry-level", "associate"],
   work_types: ["remote"],

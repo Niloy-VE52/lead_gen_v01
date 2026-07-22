@@ -2,17 +2,35 @@ export default function ConfigPanel({ config, onChange }) {
   const set = (key, val) => onChange({ ...config, [key]: val });
 
   const handleArrayInput = (key, val) =>
-    set(key, val.split(",").map((s) => s.trim()).filter(Boolean));
+    set(
+      key,
+      val
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    );
+
+  const keywordsVal = Array.isArray(config.keywords)
+    ? config.keywords.join(", ")
+    : config.keywords || "";
+
+  const expVal = Array.isArray(config.experience_levels)
+    ? config.experience_levels.join(", ")
+    : config.experience_levels || "";
+
+  const wtVal = Array.isArray(config.work_types)
+    ? config.work_types.join(", ")
+    : config.work_types || "";
 
   return (
     <div className="config-grid">
       <div className="config-field">
-        <label>Keywords</label>
+        <label>Job Titles / Keywords</label>
         <input
           type="text"
-          value={config.keywords.join(", ")}
+          value={keywordsVal}
           onChange={(e) => handleArrayInput("keywords", e.target.value)}
-          placeholder="e.g. Support Specialist, Technical Support"
+          placeholder="e.g. Support Specialist"
         />
       </div>
 
@@ -30,7 +48,7 @@ export default function ConfigPanel({ config, onChange }) {
         <label>Experience Levels</label>
         <input
           type="text"
-          value={config.experience_levels.join(", ")}
+          value={expVal}
           onChange={(e) => handleArrayInput("experience_levels", e.target.value)}
           placeholder="e.g. entry-level, associate"
         />
@@ -40,7 +58,7 @@ export default function ConfigPanel({ config, onChange }) {
         <label>Work Types</label>
         <input
           type="text"
-          value={config.work_types.join(", ")}
+          value={wtVal}
           onChange={(e) => handleArrayInput("work_types", e.target.value)}
           placeholder="e.g. remote, hybrid"
         />

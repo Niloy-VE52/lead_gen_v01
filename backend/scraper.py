@@ -66,15 +66,42 @@ FIELDS = [
 def scrape_linkedin_jobs(config: dict, status_cb=None) -> list[dict]:
     client = get_client()
 
+    raw_keywords = config.get("keywords")
+    if isinstance(raw_keywords, str):
+        keywords_list = [k.strip() for k in raw_keywords.split(",") if k.strip()]
+    elif isinstance(raw_keywords, list):
+        keywords_list = [k.strip() for k in raw_keywords if isinstance(k, str) and k.strip()]
+    else:
+        keywords_list = []
+
+    if not keywords_list:
+        keywords_list = ["Customer Support Specialist"]
+
+    raw_exp = config.get("experience_levels")
+    if isinstance(raw_exp, str):
+        exp_list = [e.strip() for e in raw_exp.split(",") if e.strip()]
+    elif isinstance(raw_exp, list):
+        exp_list = [e.strip() for e in raw_exp if isinstance(e, str) and e.strip()]
+    else:
+        exp_list = ["entry-level"]
+
+    raw_wt = config.get("work_types")
+    if isinstance(raw_wt, str):
+        wt_list = [w.strip() for w in raw_wt.split(",") if w.strip()]
+    elif isinstance(raw_wt, list):
+        wt_list = [w.strip() for w in raw_wt if isinstance(w, str) and w.strip()]
+    else:
+        wt_list = ["remote"]
+
     run_input = {
         "startUrls": [],
-        "keyword": config.get("keywords", ["Customer Support Specialist"]),
+        "keyword": keywords_list,
         "location": config.get("location", "Europe"),
         "distance": "",
         "publishedAt": config.get("published_at", "r604800"),
         "jobType": [],
-        "experienceLevel": config.get("experience_levels", ["entry-level"]),
-        "workType": config.get("work_types", ["remote"]),
+        "experienceLevel": exp_list,
+        "workType": wt_list,
         "salaryBase": "",
         "maxItems": config.get("max_items", 15),
         "saveOnlyUniqueItems": False,
@@ -88,7 +115,8 @@ def scrape_linkedin_jobs(config: dict, status_cb=None) -> list[dict]:
         status_cb("🚀 Running LinkedIn Jobs scraper...")
 
     run = client.actor("Wnbk97HLf3dKIZ8ja").call(run_input=run_input)
-    raw_results = list(client.dataset(run["defaultDatasetId"]).iterate_items())
+    dataset_id = run["defaultDatasetId"] if isinstance(run, dict) else getattr(run, "defaultDatasetId", None) or run["defaultDatasetId"]
+    raw_results = list(client.dataset(dataset_id).iterate_items())
 
     if status_cb:
         status_cb(f"✅ Scraped {len(raw_results)} raw jobs")
@@ -124,7 +152,11 @@ def check_repeatability(extracted: list[dict], status_cb=None) -> list[dict]:
 
     for company in company_names:
         job_titles_for_company = company_to_titles.get(company, [])
-        job_title_str = job_titles_for_company[0] if job_titles_for_company else ""
+        job_title_str = job_titles_for_company[0] if (job_titles_for_company and job_titles_for_company[0]) else ""
+        if not job_title_str:
+            matching_rows = [r for r in extracted if r.get("companyName") == company]
+            if matching_rows:
+                job_title_str = matching_rows[0].get("jobTitle", "")
 
         if status_cb:
             status_cb(f"🔍 Repeatability check: {company}")
@@ -139,7 +171,8 @@ def check_repeatability(extracted: list[dict], status_cb=None) -> list[dict]:
 
         try:
             repeat_run = client.actor("JkfTWxtpgfvcRQn3p").call(run_input=repeat_input)
-            items = list(client.dataset(repeat_run["defaultDatasetId"]).iterate_items())
+            repeat_dataset_id = repeat_run["defaultDatasetId"] if isinstance(repeat_run, dict) else getattr(repeat_run, "defaultDatasetId", None) or repeat_run["defaultDatasetId"]
+            items = list(client.dataset(repeat_dataset_id).iterate_items())
             titles = [item.get("job_title") or item.get("jobTitle") or "" for item in items]
             company_job_titles[company] = [t.lower().strip() for t in titles if t]
         except Exception as e:
