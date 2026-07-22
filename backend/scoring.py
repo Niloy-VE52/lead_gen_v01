@@ -29,23 +29,21 @@ Review Summary: {str(row.get('Reviews', ''))[:800]}
 
 --- SCORING RULES ---
 Read the company desription,If the Company Description suggests that the company is either any of this 3 types 
-mentioned below then score D1, D3, D5 as 0:
-1. staffing, recruiting, HR, or outsourcing company,  
-2. consulting, services, solutions, or agency firmCompany is a marketplace or platform connecting freelancers
-3. Company is a marketplace or platform connecting freelancers
-
+mentioned below then score D1, D3, D5 as 0: 
+1. Company is a marketplace or platform connecting freelancers or consulting, 
+2. Compnay is either one of these services, solutions, or agency firmCompany, staffing, recruiting, HR, or outsourcing company, 
 
 Otherwise:
 D1 - Execution Signal (0-3):
-3 = Customer Support, Technical Support, QA, Implementation, Operations Associate
+3 = Customer Support, Technical Support, QA engineer, Implementation specialist, Operations Associate, Business Development Representative ,Customer Account Executive
 2 = Similar support/operations role
 1 = Borderline role
 0 = Strategic, Leadership, Engineering, Developer, Architect, Ownership, Tech Heavy Role
 
 D3 - Company Fit (0-2):
-2 = Strong Fit  (SaaS/Tech/E-commerce, 50-300 employees, Series A/B)
-1 = Moderate Fit
-0 = Poor Fit
+2 = Strong Fit  (SaaS/Tech/E-commerce + 50-300 employees + Series A/B)
+1 = Moderate Fit (if not either in score 2 and 0)
+0 = Poor Fit (No funding + 500+ or 0-11 employee count + or domain doesn't matches our interest)
 
 D4 - Remote Readiness (0-2):
 Read the full job description carefully to determine work location.
@@ -55,9 +53,9 @@ Read the full job description carefully to determine work location.
 
 D5 - Buying Trigger (0-3):
 3 = Strong Trigger  (funding < 12 months, understaffed, burnout, scaling pressure)
-2 = Moderate Trigger
-1 = Weak Trigger
-0 = No Trigger
+2 = Moderate Trigger (funding >=12 months, understaffed, burnout, scaling pressure)
+1 = Weak Trigger (understaffed, burnout, scaling pressure etc. only but no clear funding or no funding)
+0 = No Trigger (No strong reliable signal at all)
 
 Reason: (Summery About Scores why it is given)
 
