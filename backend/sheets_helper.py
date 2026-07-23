@@ -10,6 +10,11 @@ SCOPES = [
 
 SCRAPED_SHEET_NAME  = "Scaped_v6"
 SCORING_SHEET_NAME  = "Score_Listing_v6"
+EMAIL_SAVER = "Email_saver"
+
+EMAIL_SAVER_HEADERS = [
+    "companyName", "personName", "email", "designation", "linkedinUrl", "addedAt"
+]
 
 # ── Column definitions ─────────────────────────────────────────
 SCRAPED_HEADERS = [
@@ -190,3 +195,58 @@ def upsert_scoring_row(ws, headers: list, score_data: dict):
             return
 
     ws.append_row(row_data, value_input_option="RAW")
+
+
+def get_keep_companies(gc):
+    """Read scoring sheet, filter KEEP decisions, join with scraped sheet for companyUrl."""
+    # Open scoring sheet
+    _, score_ws = get_or_create_sheet(gc, SCORING_SHEET_NAME, SCORING_HEADERS)
+    score_rows = get_all_rows_as_dicts(score_ws)
+
+    keep_rows = [r for r in score_rows if r.get("decision", "").strip().upper() == "KEEP"]
+
+    if not keep_rows:
+        return []
+
+    # Open scraped sheet to get companyUrl (LinkedIn company page)
+    _, scraped_ws = get_or_create_sheet(gc, SCRAPED_SHEET_NAME, SCRAPED_HEADERS)
+    scraped_rows = get_all_rows_as_dicts(scraped_ws)
+
+    # Build company name → companyUrl mapping
+    company_url_map = {}
+    for row in scraped_rows:
+        name = row.get("companyName", "").strip()
+        url = row.get("companyUrl", "").strip()
+        if name and url and name not in company_url_map:
+            company_url_map[name] = url
+
+    # Deduplicate by company name - reverse so newest KEEP entries come first (stack order)
+    seen = set()
+    results = []
+    for row in reversed(keep_rows):
+        company = row.get("companyName", "").strip()
+        if not company or company in seen:
+            continue
+        seen.add(company)
+        results.append({
+            "companyName": company,
+            "companyUrl": company_url_map.get(company, ""),
+            "location": row.get("location", ""),
+            "sector": row.get("sector", ""),
+            "priority": row.get("priority", ""),
+        })
+
+    return results
+
+
+def append_to_email_saver(gc, row_data: dict):
+    """Append a contact to the EMAIL_SAVER sheet. Creates sheet + headers if first time."""
+    _, ws = get_or_create_sheet(gc, EMAIL_SAVER, EMAIL_SAVER_HEADERS)
+    row = [row_data.get(h, "") for h in EMAIL_SAVER_HEADERS]
+    append_rows_safe(ws, [row], EMAIL_SAVER_HEADERS)
+
+
+def get_email_saver_entries(gc):
+    """Read all existing EMAIL_SAVER entries."""
+    _, ws = get_or_create_sheet(gc, EMAIL_SAVER, EMAIL_SAVER_HEADERS)
+    return get_all_rows_as_dicts(ws)

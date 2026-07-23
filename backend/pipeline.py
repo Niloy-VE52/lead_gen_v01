@@ -340,3 +340,76 @@ def _upsert_with_retry(run_id: str, score_row: dict, max_attempts: int = 3):
             print(f"[{run_id}] ⚠️ Write failed (attempt {attempt+1}/3), retrying in {wait}s... {e}")
             time.sleep(wait)
     raise RuntimeError(f"Sheet write failed after {max_attempts} attempts: {last_error}")
+
+
+# ── Pipeline 3: Email Finder for KEEP companies ───────────────
+
+def run_email_finder_pipeline(run_id: str, company_url: str, company_name: str):
+    """Find decision makers at a company and extract their emails."""
+    from backend.emailFinder import get_decisionmakers_linkedin, get_email_from_linkedin_profile
+
+    try:
+        # ── Step 1: Find decision makers ──────────────────────
+        update_status(run_id, f"🔍 Finding decision makers at {company_name}...")
+
+        decision_makers = get_decisionmakers_linkedin(company_url)
+
+        if not decision_makers:
+            finish(run_id, f"⚠️ No decision makers found at {company_name}", {
+                "company_name": company_name,
+                "contacts": []
+            })
+            return
+
+        update_status(run_id, f"👥 Found {len(decision_makers)} decision makers. Extracting emails...")
+
+        # ── Step 2: Extract emails for each person ────────────
+        contacts = []
+        for idx, person in enumerate(decision_makers, start=1):
+            first_name = person.get("firstName", "")
+            last_name = person.get("lastName", "")
+            full_name = f"{first_name} {last_name}".strip()
+            linkedin_url = person.get("linkedinUrl", "")
+
+            # Get designation from current positions
+            designation = ""
+            current_positions = person.get("currentPositions", [])
+            if current_positions and isinstance(current_positions, list):
+                designation = current_positions[0].get("title", "")
+
+            update_status(
+                run_id,
+                f"📧 Getting email ({idx}/{len(decision_makers)}): {full_name}..."
+            )
+
+            email = ""
+            try:
+                if linkedin_url:
+                    email_results = get_email_from_linkedin_profile(linkedin_url)
+                    if email_results and isinstance(email_results, list):
+                        # The email scraper returns a list of profile data
+                        for result in email_results:
+                            found_email = result.get("email", "")
+                            if found_email:
+                                email = found_email
+                                break
+            except Exception as e:
+                print(f"[{run_id}] ⚠️ Email lookup failed for {full_name}: {e}")
+
+            contacts.append({
+                "personName": full_name,
+                "designation": designation,
+                "email": email,
+                "linkedinUrl": linkedin_url,
+                "companyName": company_name,
+            })
+
+            print(f"[{run_id}] {full_name} | {designation} | {email or 'No email found'}")
+
+        finish(run_id, f"✅ Found {len(contacts)} contacts at {company_name}", {
+            "company_name": company_name,
+            "contacts": contacts,
+        })
+
+    except Exception as e:
+        fail(run_id, f"{e}\n{traceback.format_exc()}")

@@ -11,6 +11,7 @@ import HomePage    from "./HomePage";
 import RunPage     from "./RunPage";
 import RunHistory  from "./RunHistory";
 import SheetsPage  from "./SheetsPage";
+import EmailFinderPage from "./EmailFinderPage";
 
 export default function App() {
   const [config, setConfig]           = useState(DEFAULT_CONFIG);
@@ -71,6 +72,7 @@ export default function App() {
           {tab === "run"     && <RunPage config={config} onConfigChange={setConfig} onLaunch={launch} launching={launching} error={error} activeRunId={activeRunId} onRunDone={handleRunDone} />}
           {tab === "history" && <><div className="section-heading">All Pipeline Runs</div><RunHistory runs={runs} activeRunId={activeRunId} /></>}
           {tab === "sheets"  && <SheetsPage />}
+          {tab === "emails"  && <EmailFinderPage />}
         </div>
       </div>
     </div>

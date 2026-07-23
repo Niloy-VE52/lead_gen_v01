@@ -1,7 +1,8 @@
-export const BASE_URL = process.env.REACT_APP_API_URL;
+export const BASE_URL = (process.env.REACT_APP_API_URL || "http://localhost:8000").replace(/\/$/, "");
 
 export async function apiPost(path, body) {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const urlPath = path.startsWith("/") ? path : `/${path}`;
+  const res = await fetch(`${BASE_URL}${urlPath}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -11,7 +12,9 @@ export async function apiPost(path, body) {
 }
 
 export async function apiGet(path) {
-  const res = await fetch(`${BASE_URL}${path}`);
+  const urlPath = path.startsWith("/") ? path : `/${path}`;
+  const res = await fetch(`${BASE_URL}${urlPath}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
+

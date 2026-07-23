@@ -22,7 +22,7 @@ def get_email_from_linkedin_profile(profile_url):
     
     return results
 
-def get_decisionmakers_email(company_url):
+def get_decisionmakers_linkedin(company_url):
     # Prepare the Actor input
     run_input = {
         "companies": [
@@ -70,19 +70,19 @@ def get_decisionmakers_email(company_url):
     return results
 
 
-company_url = "https://www.linkedin.com/company/ecm-holding-group"  # Replace with the actual company URL
+# company_url = "https://www.linkedin.com/company/ecm-holding-group"  # Replace with the actual company URL
 
-results = get_decisionmakers_email(company_url)
-print(results)
-for person in results:
-    profile = person
+# results = get_decisionmakers_linkedin(company_url)
+# print(results)
+# for person in results:
+#     profile = person
 
-    print("Name:", profile["firstName"], profile["lastName"])
-    print("LinkedIn:", profile["linkedinUrl"])
-    print("Title:", profile["currentPositions"][0]["title"])
-    print("Company:", profile["currentPositions"][0]["companyName"])
-    print("Location:", profile["location"]["linkedinText"])
-    print("-"*50)
+#     print("Name:", profile["firstName"], profile["lastName"])
+#     print("LinkedIn:", profile["linkedinUrl"])
+#     print("Title:", profile["currentPositions"][0]["title"])
+#     print("Company:", profile["currentPositions"][0]["companyName"])
+#     print("Location:", profile["location"]["linkedinText"])
+#     print("-"*50)
 
 
 # employee_url = "https://www.linkedin.com/in/ACwAAAMU2okBR6B4eEMOPW5H5IZf8Qsyss4CMFE"

@@ -20,12 +20,19 @@ const IconSheet = () => (
     <path d="M2 6h12M2 10h12M6 2v12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
   </svg>
 );
+const IconEmail = () => (
+  <svg className="nav-icon" viewBox="0 0 16 16" fill="none">
+    <rect x="1.5" y="3" width="13" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+    <path d="M1.5 5l6.5 4 6.5-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
 
 const NAV_ITEMS = [
   { id: "home",    label: "Home",         Icon: IconHome    },
   { id: "run",     label: "Run Pipeline", Icon: IconRun     },
   { id: "history", label: "Run History",  Icon: IconHistory },
   { id: "sheets",  label: "Sheets",       Icon: IconSheet   },
+  { id: "emails",  label: "Email Finder", Icon: IconEmail   },
 ];
 
 export default function Sidebar({ tab, onTabChange, runCount, className = "" }) {
