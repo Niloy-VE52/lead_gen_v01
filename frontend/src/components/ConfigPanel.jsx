@@ -1,3 +1,6 @@
+import MultiSelect from "./MultiSelect";
+import { AVAILABLE_ROLES } from "../constants/roles";
+
 export default function ConfigPanel({ config, onChange }) {
   const set = (key, val) => onChange({ ...config, [key]: val });
 
@@ -10,9 +13,11 @@ export default function ConfigPanel({ config, onChange }) {
         .filter(Boolean)
     );
 
-  const keywordsVal = Array.isArray(config.keywords)
-    ? config.keywords.join(", ")
-    : config.keywords || "";
+  const keywordsArray = Array.isArray(config.keywords)
+    ? config.keywords
+    : typeof config.keywords === "string"
+    ? config.keywords.split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
 
   const expVal = Array.isArray(config.experience_levels)
     ? config.experience_levels.join(", ")
@@ -26,11 +31,11 @@ export default function ConfigPanel({ config, onChange }) {
     <div className="config-grid">
       <div className="config-field">
         <label>Job Titles / Keywords</label>
-        <input
-          type="text"
-          value={keywordsVal}
-          onChange={(e) => handleArrayInput("keywords", e.target.value)}
-          placeholder="e.g. Support Specialist"
+        <MultiSelect
+          options={AVAILABLE_ROLES}
+          selected={keywordsArray}
+          onChange={(val) => set("keywords", val)}
+          placeholder="Select roles..."
         />
       </div>
 

@@ -114,7 +114,7 @@ async def run_full(input_data: ScrapeInput, background_tasks: BackgroundTasks):
     async def full_pipeline():
         await asyncio.to_thread(run_full_pipeline, run_id, input_data.model_dump())
         if job_status_store[run_id]["status"] != "error":
-            await asyncio.to_thread(run_scoring_pipeline, run_id, None)
+            await asyncio.to_thread(run_scoring_pipeline, run_id, None, input_data.keywords)
 
     background_tasks.add_task(full_pipeline)
 

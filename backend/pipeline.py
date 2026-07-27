@@ -151,7 +151,7 @@ def run_full_pipeline(run_id: str, config: dict):
 
 # ── Pipeline 2: Score jobs → Job_Scoring_List ─────────────────
 
-def run_scoring_pipeline(run_id: str, target_job_id: str | None = None):
+def run_scoring_pipeline(run_id: str, target_job_id: str | None = None, keywords: list[str] | None = None):
     try:
         # ── Read source sheet ──────────────────────────────────
         update_status(run_id, f"📄 Reading {SCRAPED_SHEET_NAME}...")
@@ -219,7 +219,8 @@ def run_scoring_pipeline(run_id: str, target_job_id: str | None = None):
         )
 
         scorer = LeadScorer(
-            llm_client=build_llm_client()
+            llm_client=build_llm_client(),
+            keywords=keywords
         )
 
         rows_to_write = []

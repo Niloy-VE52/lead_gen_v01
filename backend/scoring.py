@@ -4,12 +4,30 @@ load_dotenv()
 
 class LeadScorer:
 
-    def __init__(self, llm_client):
+    def __init__(self, llm_client, keywords=None):
         self.llm = llm_client
+        if isinstance(keywords, str):
+            self.keywords = [k.strip() for k in keywords.split(",") if k.strip()]
+        elif isinstance(keywords, list):
+            self.keywords = [k.strip() for k in keywords if isinstance(k, str) and k.strip()]
+        else:
+            self.keywords = []
+
+        if not self.keywords:
+            self.keywords = [
+                "Customer Support",
+                "Technical Support",
+                "QA engineer",
+                "Implementation specialist",
+                "Operations Associate",
+                "Business Development Representative",
+                "Customer Account Executive"
+            ]
 
     # ── LLM dimensions (single call) ──────────────────────────
 
     def score_llm_dimensions(self, row: dict) -> dict:
+        roles_str = ", ".join(self.keywords)
         prompt = f"""
 You are a B2B lead scoring assistant. Score this lead on 3 dimensions.
 
@@ -35,7 +53,7 @@ mentioned below then score D1, D3, D5 as 0:
 
 Otherwise:
 D1 - Execution Signal (0-3):
-3 = Customer Support, Technical Support, QA engineer, Implementation specialist, Operations Associate, Business Development Representative ,Customer Account Executive
+3 = {roles_str}
 2 = Similar support/operations role
 1 = Borderline role
 0 = Strategic, Leadership, Engineering, Developer, Architect, Ownership, Tech Heavy Role
