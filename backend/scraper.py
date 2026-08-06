@@ -83,7 +83,7 @@ def scrape_linkedin_jobs(config: dict, status_cb=None) -> list[dict]:
     elif isinstance(raw_exp, list):
         exp_list = [e.strip() for e in raw_exp if isinstance(e, str) and e.strip()]
     else:
-        exp_list = ["entry-level"]
+        exp_list = ["entry"]
 
     raw_wt = config.get("work_types")
     if isinstance(raw_wt, str):
@@ -93,28 +93,49 @@ def scrape_linkedin_jobs(config: dict, status_cb=None) -> list[dict]:
     else:
         wt_list = ["remote"]
 
-    run_input = {
-        "startUrls": [],
-        "keyword": keywords_list,
-        "location": config.get("location", "Europe"),
-        "distance": "",
-        "publishedAt": config.get("published_at", "r604800"),
-        "jobType": [],
-        "experienceLevel": exp_list,
-        "workType": wt_list,
-        "salaryBase": "",
-        "maxItems": config.get("max_items", 15),
-        "saveOnlyUniqueItems": False,
-        "cleanDescription": True,
-        "enrichCompanyData": True,
+    # Normalize experience levels to allowed values for the new actor
+    ALLOWED_EXP = {"internship", "entry", "associate", "mid-senior", "director", "executive"}
+    EXP_MAP = {
+        "entry-level": "entry",
+        "entry level": "entry",
+        "mid-senior-level": "mid-senior",
+        "mid-senior level": "mid-senior",
+        "mid senior": "mid-senior",
     }
+    exp_list = [EXP_MAP.get(e.lower(), e.lower()) for e in exp_list]
+    exp_list = [e for e in exp_list if e in ALLOWED_EXP]
+    if not exp_list:
+        exp_list = ["entry"]
 
-    work_type_label = ", ".join(run_input["workType"])
+    # Map published_at config to postedLimit format for new actor
+    published_at = config.get("published_at", "r604800")
+    posted_limit_map = {
+        "r86400": "day",
+        "r604800": "week",
+        "r2592000": "month",
+    }
+    posted_limit = posted_limit_map.get(published_at, "week")
+
+    run_input = {
+        "jobTitles": keywords_list,
+        "locations": [config.get("location", "Europe")],
+        "maxItems": config.get("max_items", 15),
+        # "company": [],
+        "workplaceType": wt_list,
+        "employmentType": ["full-time"],
+        "experienceLevel": exp_list,
+        "salary": [],
+        "under10Applicants": False,
+        "easyApply": False,
+        "postedLimit": posted_limit,
+        "industryIds": [],
+        "sortBy": "date",
+    }
 
     if status_cb:
         status_cb("🚀 Running LinkedIn Jobs scraper...")
 
-    run = client.actor("Wnbk97HLf3dKIZ8ja").call(run_input=run_input)
+    run = client.actor("zn01OAlzP853oqn4Z").call(run_input=run_input)
     dataset_id = run["defaultDatasetId"] if isinstance(run, dict) else getattr(run, "defaultDatasetId", None) or run["defaultDatasetId"]
     raw_results = list(client.dataset(dataset_id).iterate_items())
 
@@ -123,9 +144,37 @@ def scrape_linkedin_jobs(config: dict, status_cb=None) -> list[dict]:
 
     extracted = []
     for item in raw_results:
-        row = {field: item.get(field, "") for field in FIELDS}
-        row["companyWebsite"] = extract_real_url(row.get("companyWebsite", ""))
-        row["workType"] = work_type_label
+        row = {
+            "jobId": item.get("id", ""),
+            "jobTitle": item.get("title", ""),
+            "jobUrl": item.get("linkedinUrl", ""),
+            "jobDescription": item.get("descriptionText", ""),
+            "companyName": (item.get("company") or {}).get("name", ""),
+            "location": (item.get("location") or {}).get("parsed", {}).get("text", ""),
+            "publishedAt": item.get("postedDate", ""),
+            "publishedDate": (
+                item.get("postedDate", "").split("T")[0]
+                if item.get("postedDate")
+                else ""
+            ),
+            "contractType": item.get("employmentType", ""),
+            "experienceLevel": item.get("experienceLevel", ""),
+            "workType": item.get("workplaceType", ""),
+            "sector": (
+                (item.get("company") or {})
+                    .get("industries", [{}])[0]
+                    .get("name", "")
+                if (item.get("company") or {}).get("industries")
+                else ""
+            ),
+            "searchString": (item.get("query") or {}).get("search", ""),
+            "companyEmployeeCount": (item.get("company") or {}).get("employeeCount", ""),
+            "companyDescription": (item.get("company") or {}).get("description", ""),
+            "companyUrl": (item.get("company") or {}).get("linkedinUrl", ""),
+            "companyWebsite": extract_real_url(
+                (item.get("company") or {}).get("website", "")
+            ),
+        }
         extracted.append(row)
 
     return extracted

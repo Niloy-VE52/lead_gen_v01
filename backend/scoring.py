@@ -53,21 +53,15 @@ mentioned below then score D1, D3, D5 as 0:
 
 Otherwise:
 D1 - Execution Signal (0-3):
-3 = {roles_str}
-2 = Similar support/operations role
-1 = Borderline role
-0 = Strategic, Leadership, Engineering, Developer, Architect, Ownership, Tech Heavy Role
+3 = {roles_str} or any similar operational, support, sales, or general role
+2 = Technical roles (Engineer, Developer, Analyst, Data Scientist, Architect etc.)
+1 = Senior/Principal individual contributor roles or niche specialist roles
+0 = Leadership, C-Suite, CEO, COO, CTO, CFO, VP, Vice President, Director, Head of, Managing Director, or any high-level management role
 
 D3 - Company Fit (0-2):
 2 = Strong Fit  (SaaS/Tech/E-commerce + 50-300 employees + Series A/B)
 1 = Moderate Fit (if not either in score 2 and 0)
 0 = Poor Fit (No funding + 500+ or 0-11 employee count + or domain doesn't matches our interest)
-
-D4 - Remote Readiness (0-2):
-Read the full job description carefully to determine work location.
-2 = Remote (job description explicitly mentions remote work or work from anywhere)
-0 = Hybrid (job description mentions hybrid, partial remote, or flexible location)
-0 = Onsite (job description mentions onsite, in-office, or no remote option)
 
 D5 - Buying Trigger (0-3):
 3 = Strong Trigger  (funding < 12 months, understaffed, burnout, scaling pressure)
@@ -78,7 +72,7 @@ D5 - Buying Trigger (0-3):
 Reason: (Summery About Scores why it is given)
 
 Return ONLY a valid JSON object, no explanation:
-{{"D1": <int>, "D3": <int>, "D4": <int>, "D5": <int>, "Reason":<string>}}
+{{"D1": <int>, "D3": <int>, "D5": <int>, "Reason":<string>}}
 """
         response = self.llm(prompt)
         try:
@@ -89,12 +83,11 @@ Return ONLY a valid JSON object, no explanation:
             return {
                 "D1": max(0, min(int(scores["D1"]), 3)),
                 "D3": max(0, min(int(scores["D3"]), 2)),
-                "D4": max(0, min(int(scores["D3"]), 2)),
                 "D5": max(0, min(int(scores["D5"]), 3)),
                 "Reason": scores["Reason"]
             }
         except Exception:
-            return {"D1": 0, "D3": 0,"D4": 0, "D5": 0,"Reason":"None"}
+            return {"D1": 0, "D3": 0, "D5": 0, "Reason": "None"}
 
     # ── Rule-based dimensions ─────────────────────────────────
 
@@ -111,13 +104,13 @@ Return ONLY a valid JSON object, no explanation:
             return 1
         return 0
 
-    # def score_remote_readiness(self, row: dict) -> int:
-    #     work_type = str(row.get("workType", "")).lower()
-    #     if "remote" in work_type:
-    #         return 2
-    #     if "hybrid" in work_type:
-    #         return 1
-    #     return 0
+    def score_remote_readiness(self, row: dict) -> int:
+        work_type = str(row.get("workType", "")).lower()
+        if "remote" in work_type:
+            return 2
+        if "hybrid" in work_type:
+            return 1
+        return 0
 
     def score_repost_bonus(self, d2: int) -> int:
         return max(0, d2 - 1)
@@ -143,7 +136,7 @@ Return ONLY a valid JSON object, no explanation:
         d1 = llm_scores["D1"]
         d2 = self.score_hiring_intent(row)
         d3 = llm_scores["D3"]
-        d4 = llm_scores["D4"]
+        d4 = self.score_remote_readiness(row)
         d5 = llm_scores["D5"]
         d6 = self.score_repost_bonus(d2)
         d7 = self.score_enrichment_confidence(row)
@@ -160,16 +153,24 @@ Return ONLY a valid JSON object, no explanation:
         # if zero_reasons:
         #     d1 = d2 = d3 = d4 = d5 = d6 = d7 = 0
         #     reason = f"{', '.join(zero_reasons)} is 0, so all scores are 0 and lead is rejected."
-        if d2 == 0:
-            reason = "As Hiring Intent is 0, everything is 0"
-        if d4 == 0:
-            reason = "Not a remote job"
-
-        if 0 in (d1, d2, d3, d5):
-            d1 = d2 = d3 = d4 = d5 = d6 = d7 = 0
-
         total = d1 + d2 + d3 + d4 + d5 + d6 + d7
-        decision, priority = self.get_decision(total)
+
+        critical = {
+            "Execution Signal": d1,
+            "Hiring Intent": d2,
+            "Company Fit": d3,
+            "Buying Trigger": d5,
+        }
+        zero_dims = [name for name, val in critical.items() if val == 0]
+
+        if d4 == 0:
+            zero_dims.append("Remote Readiness")
+
+        if zero_dims:
+            reason = f"REJECTED: {', '.join(zero_dims)} is 0. " + reason
+            decision, priority = "REJECT", "-"
+        else:
+            decision, priority = self.get_decision(total)
 
         return {
             "Execution Signal":       d1,

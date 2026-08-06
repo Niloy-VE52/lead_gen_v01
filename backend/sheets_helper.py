@@ -8,8 +8,8 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-SCRAPED_SHEET_NAME  = "Scaped_v6"
-SCORING_SHEET_NAME  = "Score_Listing_v6"
+SCRAPED_SHEET_NAME  = "Job_Scaped_v7"
+SCORING_SHEET_NAME  = "Scored_Lead_V7"
 EMAIL_SAVER = "Email_saver"
 
 EMAIL_SAVER_HEADERS = [
