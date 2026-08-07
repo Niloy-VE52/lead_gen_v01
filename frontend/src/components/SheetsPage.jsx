@@ -2,9 +2,9 @@
 const SHEETS = [
   {
     title:       "Scraped Jobs",
-    sheetName:   "Scaped_v6",
+    sheetName:   "Job_Scaped_v7",
     description: "Raw scraped LinkedIn jobs enriched with Glassdoor reviews and Apollo funding data.",
-    url:         "https://docs.google.com/spreadsheets/d/1dQ4Rc42xui8rrvdDgW3HfwbjLgTRUdUBdKBduLp19rY/edit?usp=sharing",
+    url:         "https://docs.google.com/spreadsheets/d/1mAr6bzqzfLXZvR4NKLAhXCGXBreubjitadaAm7EUndU/edit?usp=sharing",
     color:       "#2563eb",
     colorBg:     "#eff4ff",
     colorBorder: "#c7d7fd",
@@ -18,9 +18,9 @@ const SHEETS = [
   },
   {
     title:       "Scored Leads",
-    sheetName:   "Score_Listing_v6",
+    sheetName:   "Scored_Lead_V7",
     description: "LLM-scored leads with decision (KEEP / HOLD / REJECT) and priority ranking.",
-    url:         "https://docs.google.com/spreadsheets/d/1lcbVl8-md3xRzJp34tRRf1e48udtu_UsF6AqEX7l2r0/edit?usp=sharing",
+    url:         "https://docs.google.com/spreadsheets/d/1If6jbKv5ND_3O-VTFpn1JipjHVo1tomDfHo-pckSGEs/edit?usp=sharing",
     color:       "#059669",
     colorBg:     "#ecfdf5",
     colorBorder: "#a7f3d0",
