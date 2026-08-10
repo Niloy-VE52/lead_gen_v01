@@ -72,7 +72,9 @@ export default function App() {
           {tab === "run"     && <RunPage config={config} onConfigChange={setConfig} onLaunch={launch} launching={launching} error={error} activeRunId={activeRunId} onRunDone={handleRunDone} />}
           {tab === "history" && <><div className="section-heading">All Pipeline Runs</div><RunHistory runs={runs} activeRunId={activeRunId} /></>}
           {tab === "sheets"  && <SheetsPage />}
-          {tab === "emails"  && <EmailFinderPage />}
+          <div style={{ display: tab === "emails" ? "block" : "none" }}>
+            <EmailFinderPage />
+          </div>
         </div>
       </div>
     </div>

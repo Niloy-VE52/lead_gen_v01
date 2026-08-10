@@ -116,9 +116,44 @@ def scrape_linkedin_jobs(config: dict, status_cb=None) -> list[dict]:
     }
     posted_limit = posted_limit_map.get(published_at, "week")
 
+    # ── Expand continent names to individual countries ────────
+    CONTINENT_MAP = {
+        "europe": [
+            "United Kingdom", "Germany", "France", "Netherlands", "Spain",
+            "Italy", "Sweden", "Switzerland", "Ireland", "Poland",
+            "Belgium", "Denmark", "Norway", "Finland", "Austria",
+            "Portugal", "Czech Republic", "Romania", "Greece", "Hungary",
+            "Croatia", "Bulgaria", "Slovakia", "Lithuania", "Latvia",
+            "Estonia", "Slovenia", "Luxembourg", "Iceland", "Serbia",
+        ],
+        "asia": [
+            "India", "Japan", "China", "South Korea", "Singapore",
+            "Indonesia", "Thailand", "Vietnam", "Philippines", "Malaysia",
+            "Taiwan", "Pakistan", "Bangladesh", "Sri Lanka", "Hong Kong",
+            "United Arab Emirates", "Saudi Arabia", "Israel", "Turkey", "Qatar",
+        ],
+        "north america": [
+            "United States", "Canada", "Mexico",
+        ],
+        "south america": [
+            "Brazil", "Argentina", "Colombia", "Chile", "Peru",
+            "Ecuador", "Venezuela", "Uruguay", "Paraguay", "Bolivia",
+        ],
+        "africa": [
+            "South Africa", "Nigeria", "Kenya", "Egypt", "Ghana",
+            "Morocco", "Ethiopia", "Tanzania", "Uganda", "Rwanda",
+        ],
+        "oceania": [
+            "Australia", "New Zealand",
+        ],
+    }
+
+    raw_location = config.get("location", "Europe").strip()
+    locations_list = CONTINENT_MAP.get(raw_location.lower(), [raw_location])
+
     run_input = {
         "jobTitles": keywords_list,
-        "locations": [config.get("location", "Europe")],
+        "locations": locations_list,
         "maxItems": config.get("max_items", 15),
         # "company": [],
         "workplaceType": wt_list,
@@ -252,25 +287,51 @@ def check_repeatability(extracted: list[dict], status_cb=None) -> list[dict]:
 
 # ── Full scrape pipeline ───────────────────────────────────────
 
-def run_scraper(config: dict, existing_job_ids: set, status_cb=None) -> list[dict]:
+def run_scraper(config: dict, existing_job_ids: set, existing_companies: set = None, status_cb=None) -> list[dict]:
     min_emp = config.get("min_employees", 50)
     max_emp = config.get("max_employees", 1000)
 
     extracted = scrape_linkedin_jobs(config, status_cb)
 
+    if existing_companies is None:
+        existing_companies = set()
+
     # ✅ Filter duplicates + company size BEFORE repeatability
     pre_filtered = []
+    batch_seen_companies = set()
+
     for row in extracted:
-        job_id = str(row.get("jobId", ""))
-        if job_id in existing_job_ids:
+        job_id = str(row.get("jobId", "")).strip()
+        company_raw = row.get("companyName", "").strip()
+        company_key = company_raw.lstrip("'").strip().lower()
+
+        if not company_key:
             if status_cb:
-                status_cb(f"⏭️ Duplicate skipped: {row.get('jobTitle')} @ {row.get('companyName')}")
+                status_cb("⛔ Missing company name skipped")
             continue
+
+        if job_id and job_id in existing_job_ids:
+            if status_cb:
+                status_cb(f"⏭️ Duplicate job ID skipped: {row.get('jobTitle')} @ {company_raw}")
+            continue
+
+        if company_key in existing_companies:
+            if status_cb:
+                status_cb(f"⏭️ Duplicate company (already in sheet): {company_raw}")
+            continue
+
+        if company_key in batch_seen_companies:
+            if status_cb:
+                status_cb(f"⏭️ Duplicate company in batch skipped: {company_raw}")
+            continue
+
         emp = row.get("companyEmployeeCount", "")
         if not is_company_size_valid(emp, min_emp, max_emp):
             if status_cb:
-                status_cb(f"⛔ Size filter: {row.get('companyName')} ({emp})")
+                status_cb(f"⛔ Size filter: {company_raw} ({emp})")
             continue
+
+        batch_seen_companies.add(company_key)
         pre_filtered.append(row)
 
     if not pre_filtered:

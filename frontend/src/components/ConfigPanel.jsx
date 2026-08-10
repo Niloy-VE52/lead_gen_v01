@@ -45,7 +45,7 @@ export default function ConfigPanel({ config, onChange }) {
           type="text"
           value={config.location}
           onChange={(e) => set("location", e.target.value)}
-          placeholder="e.g. Europe"
+          placeholder="e.g. Europe, Germany, Asia"
         />
       </div>
 

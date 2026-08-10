@@ -209,6 +209,26 @@ export default function EmailFinderPage() {
         <button className="btn-secondary ef-refresh-btn" onClick={loadCompanies} disabled={loading}>
           <IconRefresh /> Refresh
         </button>
+        <a
+          href="https://docs.google.com/spreadsheets/d/1AZiMVmeON6A2fMqodAaXAINEPzxj2puMfd5oAlDhlxo/edit?usp=sharing"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn-secondary ef-sheet-link"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            textDecoration: "none",
+            color: "#7c3aed",
+            borderColor: "#c4b5fd",
+          }}
+        >
+          <IconMail /> Email Saver Sheet
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M15 3h6v6M10 14L21 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </a>
       </div>
 
       {/* Toolbar: Search + Filters */}

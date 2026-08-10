@@ -7,9 +7,11 @@ from backend.sheets_helper import (
     get_gc,
     get_or_create_sheet,
     get_existing_job_ids,
+    get_existing_companies,
     get_all_rows_as_dicts,
     append_rows_safe,
     upsert_scoring_row,
+    format_keep_rows_in_sheet,
     SCRAPED_SHEET_NAME,
     SCORING_SHEET_NAME,
     SCRAPED_HEADERS,
@@ -103,46 +105,68 @@ def run_full_pipeline(run_id: str, config: dict):
             finish(run_id, "⚠️ No jobs passed size filter", {"jobs_added": 0})
             return
 
-        # ── Step 3: Repeatability check ────────────────────────
-        update_status(run_id, f"🔍 Running repeatability on {len(size_filtered)} jobs...")
-        enriched = check_repeatability(size_filtered, status_cb=cb)
+        # ── Step 3: Open Google Sheet & Duplicate Filter by Company ──
+        update_status(run_id, f"📄 Checking duplicates in Google Sheet: {SCRAPED_SHEET_NAME}...")
+        gc = get_gc()
+        _, ws = get_or_create_sheet(gc, SCRAPED_SHEET_NAME, SCRAPED_HEADERS)
+        existing_companies = get_existing_companies(ws)
+        existing_ids = get_existing_job_ids(ws)
 
-        # ── Step 4: Reviews ────────────────────────────────────
+        deduped_jobs = []
+        batch_seen_companies = set()
+
+        for row in size_filtered:
+            job_id = str(row.get("jobId", "")).strip()
+            company_raw = row.get("companyName", "").strip()
+            company_key = company_raw.lstrip("'").strip().lower()
+
+            if not company_key:
+                update_status(run_id, "⛔ Skipping job with missing company name")
+                continue
+
+            if job_id and job_id in existing_ids:
+                update_status(run_id, f"⏭️ Duplicate job ID skipped: {row.get('jobTitle')} @ {company_raw}")
+                continue
+
+            if company_key in existing_companies:
+                update_status(run_id, f"⏭️ Duplicate company (already in sheet): {company_raw}")
+                continue
+
+            if company_key in batch_seen_companies:
+                update_status(run_id, f"⏭️ Duplicate company in batch skipped: {company_raw}")
+                continue
+
+            batch_seen_companies.add(company_key)
+            deduped_jobs.append(row)
+
+        if not deduped_jobs:
+            finish(run_id, "⚠️ No new unique companies passed duplicate check", {"jobs_added": 0})
+            return
+
+        # ── Step 4: Repeatability check ────────────────────────
+        update_status(run_id, f"🔍 Running repeatability on {len(deduped_jobs)} unique company jobs...")
+        enriched = check_repeatability(deduped_jobs, status_cb=cb)
+
+        # ── Step 5: Reviews ────────────────────────────────────
         update_status(run_id, f"📝 Fetching reviews for {len(enriched)} jobs...")
         enriched = enrich_reviews(enriched, status_cb=cb)
 
-        # ── Step 5: Funding ────────────────────────────────────
+        # ── Step 6: Funding ────────────────────────────────────
         update_status(run_id, f"💰 Fetching funding for {len(enriched)} jobs...")
         enriched = enrich_funding(enriched, status_cb=cb)
 
-        # ── Step 6: NOW open Google Sheet ─────────────────────
-        update_status(run_id, "📄 Opening Google Sheet: Scraped_Jobs_V05...")
-        gc = get_gc()
-        _, ws = get_or_create_sheet(gc, SCRAPED_SHEET_NAME, SCRAPED_HEADERS)
-        existing_ids = get_existing_job_ids(ws)
-
-        # Filter out duplicates that appeared in sheet since we started
-        new_rows = [
-            row for row in enriched
-            if str(row.get("jobId", "")) not in existing_ids
-        ]
-
-        if not new_rows:
-            finish(run_id, "⏭️ No new jobs after duplicate check", {"jobs_added": 0})
-            return
-
         # ── Step 7: Write to sheet ─────────────────────────────
-        update_status(run_id, f"📊 Writing {len(new_rows)} jobs to sheet...")
+        update_status(run_id, f"📊 Writing {len(enriched)} jobs to sheet...")
         sheet_rows = [
             [row.get(h, "") for h in SCRAPED_HEADERS]
-            for row in new_rows
+            for row in enriched
         ]
         append_rows_safe(ws, sheet_rows, SCRAPED_HEADERS)
 
         finish(
             run_id,
-            f"✅ Done — {len(new_rows)} jobs saved to {SCRAPED_SHEET_NAME}",
-            {"jobs_added": len(new_rows)},
+            f"✅ Done — {len(enriched)} unique company jobs saved to {SCRAPED_SHEET_NAME}",
+            {"jobs_added": len(enriched)},
         )
 
     except Exception as e:
@@ -311,6 +335,12 @@ def run_scoring_pipeline(run_id: str, target_job_id: str | None = None, keywords
 
                     time.sleep(wait)
 
+            # Format KEEP rows in green (#b8d7aa)
+            try:
+                format_keep_rows_in_sheet(score_ws)
+            except Exception as format_err:
+                print(f"[{run_id}] ⚠️ Failed to format KEEP rows: {format_err}")
+
         finish(
             run_id,
             f"✅ Scored {scored} jobs → {SCORING_SHEET_NAME}",
@@ -334,6 +364,7 @@ def _upsert_with_retry(run_id: str, score_row: dict, max_attempts: int = 3):
             _, score_ws = get_or_create_sheet(gc, SCORING_SHEET_NAME, SCORING_HEADERS)
             row_data = [score_row.get(h, "") for h in SCORING_HEADERS]
             score_ws.append_row(row_data, value_input_option="RAW")
+            format_keep_rows_in_sheet(score_ws)
             return
         except Exception as e:
             last_error = e

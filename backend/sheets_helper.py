@@ -122,6 +122,67 @@ def format_header_row(ws):
                 raise
 
 
+def format_keep_rows_in_sheet(ws):
+    """Find all rows with decision == 'KEEP' in ws and format background color to #b8d7aa."""
+    for attempt in range(3):
+        try:
+            all_values = ws.get_all_values()
+            if len(all_values) <= 1:
+                return
+            header = all_values[0]
+            try:
+                decision_col = header.index("decision")
+            except ValueError:
+                return
+
+            keep_row_indices = []
+            for i, row in enumerate(all_values[1:], start=2):
+                if len(row) > decision_col:
+                    val = str(row[decision_col]).strip().upper()
+                    if val == "KEEP":
+                        keep_row_indices.append(i)
+
+            if not keep_row_indices:
+                return
+
+            r = 184 / 255.0
+            g = 215 / 255.0
+            b = 170 / 255.0
+
+            requests = [
+                {
+                    "repeatCell": {
+                        "range": {
+                            "sheetId": ws.id,
+                            "startRowIndex": row_idx - 1,
+                            "endRowIndex": row_idx,
+                        },
+                        "cell": {
+                            "userEnteredFormat": {
+                                "backgroundColor": {
+                                    "red": r,
+                                    "green": g,
+                                    "blue": b,
+                                }
+                            }
+                        },
+                        "fields": "userEnteredFormat.backgroundColor",
+                    }
+                }
+                for row_idx in keep_row_indices
+            ]
+
+            ws.spreadsheet.batch_update({"requests": requests})
+            print(f"   🎨 Highlighted {len(keep_row_indices)} KEEP rows with #b8d7aa")
+            return
+        except Exception as e:
+            if attempt < 2:
+                time.sleep(5)
+            else:
+                print(f"   ⚠️ Failed to format KEEP rows: {e}")
+
+
+
 def get_existing_job_ids(ws) -> set:
     all_values = ws.get_all_values()
     if len(all_values) <= 1:
@@ -136,6 +197,23 @@ def get_existing_job_ids(ws) -> set:
         for row in all_values[1:]
         if len(row) > job_id_col
     }
+
+
+def get_existing_companies(ws) -> set:
+    all_values = ws.get_all_values()
+    if len(all_values) <= 1:
+        return set()
+    header = all_values[0]
+    try:
+        company_col = header.index("companyName")
+    except ValueError:
+        return set()
+    return {
+        row[company_col].lstrip("'").strip().lower()
+        for row in all_values[1:]
+        if len(row) > company_col and row[company_col].strip()
+    }
+
 
 
 def get_all_rows_as_dicts(ws) -> list[dict]:

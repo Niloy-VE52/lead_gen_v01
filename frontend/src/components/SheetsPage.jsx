@@ -32,6 +32,22 @@ const SHEETS = [
     ),
     stats: ["Total Score", "Decision", "Priority", "Execution Signal", "Company Fit"],
   },
+  {
+    title:       "Email Saver",
+    sheetName:   "Email_saver",
+    description: "Saved contacts with verified emails, designations, and LinkedIn profiles.",
+    url:         "https://docs.google.com/spreadsheets/d/1AZiMVmeON6A2fMqodAaXAINEPzxj2puMfd5oAlDhlxo/edit?usp=sharing",
+    color:       "#7c3aed",
+    colorBg:     "#f5f3ff",
+    colorBorder: "#c4b5fd",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.6"/>
+        <path d="M22 4L12 13L2 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+    stats: ["Company", "Contact Name", "Email", "Designation", "LinkedIn"],
+  },
 ];
 
 const IconExternalLink = () => (
