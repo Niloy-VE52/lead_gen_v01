@@ -106,7 +106,8 @@ pip install fastapi uvicorn pydantic apify-client gspread google-auth openai gro
 Create a `.env` file in the project root:
 
 ```env
-APIFY_KEY=your_apify_token
+APIFY_KEY_1=your_apify_token_for_scraping_and_glassdoor
+APIFY_KEY_2=your_apify_token_for_email_finder
 APOLLO_API_KEY=your_apollo_api_key
 OPENAI_API_KEY=your_openai_api_key
 GOOGLE_CREDENTIALS_PATH=credentials.json

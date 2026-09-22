@@ -7,10 +7,13 @@ from urllib.parse import urlparse, parse_qs, unquote
 from rapidfuzz import fuzz
 
 
-def get_client():
-    return ApifyClient(os.getenv("APIFY_KEY"))
 from dotenv import load_dotenv
 load_dotenv()
+
+
+def get_client():
+    token = os.getenv("APIFY_KEY_1") or os.getenv("APIFY_KEY")
+    return ApifyClient(token)
 
 # ── Helpers ────────────────────────────────────────────────────
 

@@ -1,14 +1,17 @@
 from apify_client import ApifyClient
 from dotenv import load_dotenv
-load_dotenv()  # Load environment variables from .env file
 import os
 
-apify_token = os.getenv("APIFY_KEY")
-# Initialize the ApifyClient with your API token
-client = ApifyClient(apify_token)
+load_dotenv()  # Load environment variables from .env file
+
+
+def get_client():
+    token = os.getenv("APIFY_KEY_2") or os.getenv("APIFY_KEY")
+    return ApifyClient(token)
 
 
 def get_email_from_linkedin_profile(profile_url):
+    client = get_client()
     # Prepare the Actor input
     run_input = { "urls": [profile_url] }
 
@@ -23,6 +26,7 @@ def get_email_from_linkedin_profile(profile_url):
     return results
 
 def get_decisionmakers_linkedin(company_url):
+    client = get_client()
     # Prepare the Actor input
     run_input = {
         "companies": [
@@ -46,7 +50,7 @@ def get_decisionmakers_linkedin(company_url):
             "Head of Business Operations",
             
         ],
-        "maxItems": 10,
+        "maxItems": 5,
         "profileScraperMode": "Short ($4 per 1k)",
         "recentlyChangedJobs": False,
         "seniorityLevelIds": [
