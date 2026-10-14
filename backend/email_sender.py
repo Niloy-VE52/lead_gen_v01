@@ -286,7 +286,13 @@ def send_email(to_email: str, subject: str, body: str, is_html: bool = False) ->
 # 🔄 [SECTION 4: THE CORE EMAIL PIPELINE]
 # =============================================================================
 
-def run_email_pipeline(contact: dict, dry_run: bool = False, gc=None) -> dict:
+def run_email_pipeline(
+    contact: dict,
+    dry_run: bool = False,
+    gc=None,
+    test_override: str | None = None,
+    outreach_mode: str = "test",
+) -> dict:
     """
     Unified pipeline execution for a single lead:
     1. get_company_context()  -> Gather enriched company signals
@@ -298,15 +304,24 @@ def run_email_pipeline(contact: dict, dry_run: bool = False, gc=None) -> dict:
     company_name = contact.get("companyName", "Company")
     raw_email = contact.get("email", "").strip()
 
-    # Safety override during testing
-    send_recipient = TEST_EMAIL_OVERRIDE.strip() if TEST_EMAIL_OVERRIDE else raw_email
+    # Determine recipient based on outreach_mode and test_override
+    if outreach_mode == "live":
+        send_recipient = raw_email
+    elif test_override and test_override.strip():
+        send_recipient = test_override.strip()
+    elif TEST_EMAIL_OVERRIDE and TEST_EMAIL_OVERRIDE.strip():
+        send_recipient = TEST_EMAIL_OVERRIDE.strip()
+    else:
+        send_recipient = raw_email
 
     print(f"\n{'='*60}")
     print(f"🚀 [Email Pipeline] Processing: {person_name} @ {company_name}")
     print(f"   Original Prospect Email: {raw_email}")
-    if send_recipient != raw_email:
-        print(f"   🔒 Safety Redirect Active: Sending to {send_recipient}")
-    print(f"   Mode: {'🧪 DRY RUN' if dry_run else '🚀 LIVE SEND'}")
+    if outreach_mode == "live":
+        print(f"   🔥 LIVE PRODUCTION MODE: Direct delivery to prospect {raw_email}")
+    else:
+        print(f"   🛡️ TEST SANDBOX MODE: Redirected to {send_recipient}")
+    print(f"   Execution: {'🧪 DRY RUN' if dry_run else '🚀 LIVE SEND'}")
     print(f"{'='*60}")
 
     if not send_recipient or "@" not in send_recipient:
@@ -339,7 +354,7 @@ def run_email_pipeline(contact: dict, dry_run: bool = False, gc=None) -> dict:
             "body": body,
             "recipient": send_recipient,
             "original_email": raw_email,
-            "mode": "dry_run",
+            "mode": outreach_mode,
         }
 
     print(f"   [4/4] Sending email via SMTP to {send_recipient}...")
@@ -350,7 +365,8 @@ def run_email_pipeline(contact: dict, dry_run: bool = False, gc=None) -> dict:
         "body": body,
         "recipient": send_recipient,
         "original_email": raw_email,
-        "mode": "live",
+        "mode": outreach_mode,
+        "error": None if sent else "SMTP Delivery Failed",
     }
 
 

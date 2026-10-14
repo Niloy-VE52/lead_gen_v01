@@ -175,7 +175,13 @@ def run_full_pipeline(run_id: str, config: dict):
 
 # ── Pipeline 2: Score jobs → Job_Scoring_List ─────────────────
 
-def run_scoring_pipeline(run_id: str, target_job_id: str | None = None, keywords: list[str] | None = None):
+def run_scoring_pipeline(
+    run_id: str,
+    target_job_id: str | None = None,
+    keywords: list[str] | None = None,
+    outreach_mode: str = "test",
+    test_email_recipient: str | None = None,
+):
     try:
         # ── Read source sheet ──────────────────────────────────
         update_status(run_id, f"📄 Reading {SCRAPED_SHEET_NAME}...")
@@ -427,17 +433,27 @@ def run_scoring_pipeline(run_id: str, target_job_id: str | None = None, keywords
                                 "linkedinUrl": linkedin_url,
                             }
 
-                            update_status(run_id, f"✉️ Generating & sending email to {full_name} ({c_name})...")
+                            mode_label = "Live Prospect" if outreach_mode == "live" else f"Test Sandbox ({test_email_recipient or 'niloyvetesting54@gmail.com'})"
+                            update_status(run_id, f"✉️ Outreach [{mode_label}]: {full_name} ({c_name})...")
 
                             email_body = ""
                             outreach_status = "PENDING"
                             sent_at = ""
 
                             try:
-                                send_res = run_email_pipeline(contact_data, dry_run=False, gc=gc)
+                                send_res = run_email_pipeline(
+                                    contact_data,
+                                    dry_run=False,
+                                    gc=gc,
+                                    test_override=test_email_recipient,
+                                    outreach_mode=outreach_mode,
+                                )
                                 if send_res.get("success"):
                                     sent_recipient = send_res.get("recipient", email)
-                                    outreach_status = f"SENT (to {sent_recipient})" if sent_recipient != email else "SENT"
+                                    if outreach_mode == "live":
+                                        outreach_status = f"SENT (Live to {sent_recipient})"
+                                    else:
+                                        outreach_status = f"SENT (Test Sandbox: {sent_recipient})"
                                     email_body = f"Subject: {send_res.get('subject')}\n\n{send_res.get('body')}"
                                     sent_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                                     total_emails_sent += 1

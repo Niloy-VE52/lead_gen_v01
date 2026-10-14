@@ -36,10 +36,14 @@ class ScrapeInput(BaseModel):
     max_items: int = 10
     min_employees: int = 50
     max_employees: int = 1000
+    outreach_mode: str = "test"    # "test" (redirect to test inbox) or "live" (real prospect email)
+    test_email_recipient: Optional[str] = "niloyvetesting54@gmail.com"
 
 
 class ScoreInput(BaseModel):
     job_id: Optional[str] = None   # score a specific job by jobId; None = score all unscored
+    outreach_mode: str = "test"
+    test_email_recipient: Optional[str] = "niloyvetesting54@gmail.com"
 
 
 class EmailFinderInput(BaseModel):
@@ -93,7 +97,14 @@ async def run_scoring(input_data: ScoreInput, background_tasks: BackgroundTasks)
     run_id = str(uuid.uuid4())[:8]
     job_status_store[run_id] = {"status": "running", "step": "Starting scorer...", "run_id": run_id}
 
-    background_tasks.add_task(run_scoring_pipeline, run_id, input_data.job_id)
+    background_tasks.add_task(
+        run_scoring_pipeline,
+        run_id,
+        input_data.job_id,
+        None,
+        input_data.outreach_mode,
+        input_data.test_email_recipient,
+    )
 
     return {
         "run_id": run_id,
@@ -106,7 +117,7 @@ async def run_scoring(input_data: ScoreInput, background_tasks: BackgroundTasks)
 async def run_full(input_data: ScrapeInput, background_tasks: BackgroundTasks):
     """
     Runs the COMPLETE pipeline end-to-end:
-    Scrape → Reviews → Funding → Score → Save to both sheets
+    Scrape → Reviews → Funding → Score → Auto Find Emails → Outreach
     """
     run_id = str(uuid.uuid4())[:8]
     job_status_store[run_id] = {"status": "running", "step": "Starting full pipeline...", "run_id": run_id}
@@ -114,7 +125,14 @@ async def run_full(input_data: ScrapeInput, background_tasks: BackgroundTasks):
     async def full_pipeline():
         await asyncio.to_thread(run_full_pipeline, run_id, input_data.model_dump())
         if job_status_store[run_id]["status"] != "error":
-            await asyncio.to_thread(run_scoring_pipeline, run_id, None, input_data.keywords)
+            await asyncio.to_thread(
+                run_scoring_pipeline,
+                run_id,
+                None,
+                input_data.keywords,
+                input_data.outreach_mode,
+                input_data.test_email_recipient,
+            )
 
     background_tasks.add_task(full_pipeline)
 
