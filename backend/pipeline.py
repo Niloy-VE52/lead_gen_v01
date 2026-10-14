@@ -249,6 +249,8 @@ def run_scoring_pipeline(run_id: str, target_job_id: str | None = None, keywords
 
         rows_to_write = []
         scored = 0
+        keep_companies = []
+        seen_keep_companies = set()
 
         # ── Score jobs ─────────────────────────────────────────
         for idx, job in enumerate(to_score, start=1):
@@ -287,6 +289,15 @@ def run_scoring_pipeline(run_id: str, target_job_id: str | None = None, keywords
                 )
 
                 scored += 1
+
+                if str(result.get("decision", "")).strip().upper() == "KEEP":
+                    company_norm = company.strip().lower()
+                    if company_norm and company_norm not in seen_keep_companies:
+                        seen_keep_companies.add(company_norm)
+                        keep_companies.append({
+                            "companyName": company,
+                            "companyUrl": job.get("companyUrl", "").strip()
+                        })
 
                 print(
                     f"[{run_id}] "
@@ -341,10 +352,127 @@ def run_scoring_pipeline(run_id: str, target_job_id: str | None = None, keywords
             except Exception as format_err:
                 print(f"[{run_id}] ⚠️ Failed to format KEEP rows: {format_err}")
 
+        # ── Step 4: Auto Find & Save Emails for KEEP companies ──────
+        total_emails_saved = 0
+        total_emails_sent = 0
+        if keep_companies:
+            from datetime import datetime
+            from backend.emailFinder import get_decisionmakers_linkedin, get_email_from_linkedin_profile
+            from backend.sheets_helper import append_to_email_saver, get_email_saver_entries
+            from backend.email_sender import run_email_pipeline
+
+            update_status(run_id, f"🔍 Auto Email Finder: Finding emails for {len(keep_companies)} KEEP companies...")
+
+            try:
+                existing_saved = get_email_saver_entries(gc)
+                already_saved_companies = set(
+                    r.get("companyName", "").strip().lower()
+                    for r in existing_saved if r.get("companyName")
+                )
+            except Exception as e:
+                print(f"[{run_id}] ⚠️ Could not fetch existing Email_saver entries: {e}")
+                already_saved_companies = set()
+
+            for k_idx, k_comp in enumerate(keep_companies, start=1):
+                c_name = k_comp["companyName"]
+                c_url = k_comp["companyUrl"]
+
+                if not c_url:
+                    print(f"[{run_id}] ⚠️ Skipping email finder for {c_name}: No companyUrl")
+                    continue
+
+                if c_name.strip().lower() in already_saved_companies:
+                    print(f"[{run_id}] ⏭️ Skipping email finder for {c_name}: Already in Email_saver")
+                    continue
+
+                update_status(run_id, f"👥 Finding decision makers ({k_idx}/{len(keep_companies)}): {c_name}...")
+                try:
+                    decision_makers = get_decisionmakers_linkedin(c_url)
+                    if not decision_makers:
+                        print(f"[{run_id}] ⚠️ No decision makers found at {c_name}")
+                        continue
+
+                    update_status(run_id, f"📧 Extracting emails for {len(decision_makers)} contacts at {c_name}...")
+                    for person in decision_makers:
+                        first_name = person.get("firstName", "")
+                        last_name = person.get("lastName", "")
+                        full_name = f"{first_name} {last_name}".strip()
+                        linkedin_url = person.get("linkedinUrl", "")
+
+                        designation = ""
+                        current_pos = person.get("currentPositions", [])
+                        if current_pos and isinstance(current_pos, list):
+                            designation = current_pos[0].get("title", "")
+
+                        email = ""
+                        if linkedin_url:
+                            try:
+                                email_results = get_email_from_linkedin_profile(linkedin_url)
+                                if email_results and isinstance(email_results, list):
+                                    for res in email_results:
+                                        found_email = res.get("email", "")
+                                        if found_email:
+                                            email = found_email
+                                            break
+                            except Exception as email_err:
+                                print(f"[{run_id}] ⚠️ Email lookup failed for {full_name}: {email_err}")
+
+                        if email:
+                            # ── Auto Email Generation & Sending ─────────────────
+                            contact_data = {
+                                "companyName": c_name,
+                                "personName": full_name,
+                                "email": email,
+                                "designation": designation,
+                                "linkedinUrl": linkedin_url,
+                            }
+
+                            update_status(run_id, f"✉️ Generating & sending email to {full_name} ({c_name})...")
+
+                            email_body = ""
+                            outreach_status = "PENDING"
+                            sent_at = ""
+
+                            try:
+                                send_res = run_email_pipeline(contact_data, dry_run=False, gc=gc)
+                                if send_res.get("success"):
+                                    sent_recipient = send_res.get("recipient", email)
+                                    outreach_status = f"SENT (to {sent_recipient})" if sent_recipient != email else "SENT"
+                                    email_body = f"Subject: {send_res.get('subject')}\n\n{send_res.get('body')}"
+                                    sent_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                    total_emails_sent += 1
+                                else:
+                                    outreach_status = f"FAILED: {send_res.get('error', 'SMTP Error')}"
+                            except Exception as send_err:
+                                print(f"[{run_id}] ⚠️ Auto email sending failed for {full_name}: {send_err}")
+                                outreach_status = f"FAILED: {send_err}"
+
+                            row_data = {
+                                "companyName": c_name,
+                                "personName": full_name,
+                                "email": email,
+                                "designation": designation,
+                                "linkedinUrl": linkedin_url,
+                                "addedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "emailBody": email_body,
+                                "outreachStatus": outreach_status,
+                                "sentAt": sent_at,
+                            }
+                            append_to_email_saver(gc, row_data)
+                            total_emails_saved += 1
+                            print(f"[{run_id}] 💾 Saved: {full_name} ({email}) | {outreach_status}")
+
+                            # Pacing delay between automated sends
+                            import time
+                            time.sleep(5)
+
+                except Exception as comp_err:
+                    print(f"[{run_id}] ❌ Auto email finder error for {c_name}: {comp_err}")
+
         finish(
             run_id,
-            f"✅ Scored {scored} jobs → {SCORING_SHEET_NAME}",
-            {"scored": scored}
+            f"✅ Scored {scored} jobs | Saved {total_emails_saved} emails | Sent {total_emails_sent} outreach emails",
+            {"scored": scored, "emails_saved": total_emails_saved, "emails_sent": total_emails_sent}
         )
 
     except Exception as e:

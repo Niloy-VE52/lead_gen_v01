@@ -13,7 +13,7 @@ SCORING_SHEET_NAME  = "Scored_Lead_V7"
 EMAIL_SAVER = "Email_saver"
 
 EMAIL_SAVER_HEADERS = [
-    "companyName", "personName", "email", "designation", "linkedinUrl", "addedAt"
+    "companyName", "personName", "email", "designation", "linkedinUrl", "addedAt", "emailBody", "outreachStatus", "sentAt"
 ]
 
 # ── Column definitions ─────────────────────────────────────────
