@@ -13,7 +13,7 @@ SCORING_SHEET_NAME  = "Scored_Lead_V7"
 EMAIL_SAVER = "Email_saver"
 
 EMAIL_SAVER_HEADERS = [
-    "companyName", "personName", "email", "designation", "linkedinUrl", "addedAt", "emailBody", "outreachStatus", "sentAt"
+    "companyName", "personName", "email", "designation", "linkedinUrl", "addedAt", "subject", "emailBody", "outreachStatus", "sentAt"
 ]
 
 # ── Column definitions ─────────────────────────────────────────
@@ -54,20 +54,32 @@ def get_or_create_sheet(gc, sheet_name: str, headers: list):
         ws = spreadsheet.sheet1
         existing = ws.get_all_values()
 
+        format_fn = format_email_saver_sheet if sheet_name == EMAIL_SAVER else format_header_row
+
         if not existing:
             # Completely empty — write header
             ws.append_row(headers, value_input_option="RAW")
             print(f"   📋 Header written to empty sheet: {sheet_name}")
-            format_header_row(ws)
+            format_fn(ws)
 
-        elif existing[0] != headers:
-            # First row is not the header — insert it
-            ws.insert_row(headers, index=1, value_input_option="RAW")
-            print(f"   ⚠️ Header was missing in {sheet_name} — inserted at row 1")
-            format_header_row(ws)
         else:
-            # Header already exists, format it anyway
-            pass
+            row0_cleaned = [str(c).strip() for c in existing[0] if str(c).strip()]
+            if not row0_cleaned:
+                ws.update(values=[headers], range_name="A1")
+                format_fn(ws)
+            elif row0_cleaned == headers:
+                pass
+            else:
+                matches = sum(1 for h in headers if h in row0_cleaned)
+                if matches >= 2:
+                    # First row is already a header row. Update in place instead of inserting duplicates!
+                    ws.update(values=[headers], range_name="A1")
+                    format_fn(ws)
+                else:
+                    # Header is genuinely missing (first row is real data) — insert at row 1
+                    ws.insert_row(headers, index=1, value_input_option="RAW")
+                    print(f"   ⚠️ Header was missing in {sheet_name} — inserted at row 1")
+                    format_fn(ws)
 
         return spreadsheet, ws
 
@@ -75,6 +87,8 @@ def get_or_create_sheet(gc, sheet_name: str, headers: list):
         spreadsheet = gc.create(sheet_name)
         ws = spreadsheet.sheet1
         ws.append_row(headers, value_input_option="RAW")
+        format_fn = format_email_saver_sheet if sheet_name == EMAIL_SAVER else format_header_row
+        format_fn(ws)
         print(f"   🆕 Created new sheet: {sheet_name}")
         return spreadsheet, ws
 
@@ -82,10 +96,9 @@ def get_or_create_sheet(gc, sheet_name: str, headers: list):
 import time
 
 def format_header_row(ws):
+    """Format row 1 with yellow background, bold font, and freeze row 1."""
     for attempt in range(3):
         try:
-            num_cols = len(ws.row_values(1))
-
             requests = [
                 {
                     "repeatCell": {
@@ -98,16 +111,29 @@ def format_header_row(ws):
                             "userEnteredFormat": {
                                 "backgroundColor": {
                                     "red": 1.0,
-                                    "green": 1.0,
-                                    "blue": 0.0
+                                    "green": 0.95,
+                                    "blue": 0.25
                                 },
                                 "textFormat": {
                                     "bold": True,
-                                    "fontSize": 16
-                                }
+                                    "fontSize": 11,
+                                    "foregroundColor": {"red": 0.0, "green": 0.0, "blue": 0.0}
+                                },
+                                "verticalAlignment": "MIDDLE",
                             }
                         },
-                        "fields": "userEnteredFormat"
+                        "fields": "userEnteredFormat(backgroundColor,textFormat,verticalAlignment)"
+                    }
+                },
+                {
+                    "updateSheetProperties": {
+                        "properties": {
+                            "sheetId": ws.id,
+                            "gridProperties": {
+                                "frozenRowCount": 1
+                            }
+                        },
+                        "fields": "gridProperties.frozenRowCount"
                     }
                 }
             ]
@@ -120,6 +146,78 @@ def format_header_row(ws):
                 time.sleep(5)
             else:
                 raise
+
+
+def format_email_saver_sheet(ws):
+    """Format Email_saver: Row 1 is yellow header, rows 2+ are clean white, regular font, and clipped row height."""
+    for attempt in range(3):
+        try:
+            requests = [
+                # 1. Format all data rows (Row 2 to 1000): white background, regular 10pt font, clipped
+                {
+                    "repeatCell": {
+                        "range": {
+                            "sheetId": ws.id,
+                            "startRowIndex": 1,
+                            "endRowIndex": 1000,
+                        },
+                        "cell": {
+                            "userEnteredFormat": {
+                                "backgroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
+                                "textFormat": {
+                                    "bold": False,
+                                    "fontSize": 10,
+                                    "foregroundColor": {"red": 0.1, "green": 0.1, "blue": 0.1}
+                                },
+                                "verticalAlignment": "MIDDLE",
+                                "wrapStrategy": "CLIP"
+                            }
+                        },
+                        "fields": "userEnteredFormat(backgroundColor,textFormat,verticalAlignment,wrapStrategy)"
+                    }
+                },
+                # 2. Format Header Row (Row 1): Yellow, bold, 11pt, vertically middle
+                {
+                    "repeatCell": {
+                        "range": {
+                            "sheetId": ws.id,
+                            "startRowIndex": 0,
+                            "endRowIndex": 1,
+                        },
+                        "cell": {
+                            "userEnteredFormat": {
+                                "backgroundColor": {"red": 1.0, "green": 0.95, "blue": 0.25},
+                                "textFormat": {
+                                    "bold": True,
+                                    "fontSize": 11,
+                                    "foregroundColor": {"red": 0.0, "green": 0.0, "blue": 0.0}
+                                },
+                                "verticalAlignment": "MIDDLE",
+                            }
+                        },
+                        "fields": "userEnteredFormat(backgroundColor,textFormat,verticalAlignment)"
+                    }
+                },
+                # 3. Freeze Header Row
+                {
+                    "updateSheetProperties": {
+                        "properties": {
+                            "sheetId": ws.id,
+                            "gridProperties": {
+                                "frozenRowCount": 1
+                            }
+                        },
+                        "fields": "gridProperties.frozenRowCount"
+                    }
+                }
+            ]
+            ws.spreadsheet.batch_update({"requests": requests})
+            return
+        except Exception as e:
+            if attempt < 2:
+                time.sleep(5)
+            else:
+                print(f"   ⚠️ Could not format email saver sheet: {e}")
 
 
 def format_keep_rows_in_sheet(ws):
@@ -317,11 +415,125 @@ def get_keep_companies(gc):
     return results
 
 
-def append_to_email_saver(gc, row_data: dict):
-    """Append a contact to the EMAIL_SAVER sheet. Creates sheet + headers if first time."""
+def upsert_email_saver_row(gc, row_data: dict):
+    """
+    Upsert a contact to the EMAIL_SAVER sheet:
+    - Finds existing row matching 'email' (or 'companyName' + 'personName' fallback).
+    - If found, updates the specified fields in-place on that exact row without creating a duplicate.
+    - If not found, appends a new row.
+    """
+    from datetime import datetime
     _, ws = get_or_create_sheet(gc, EMAIL_SAVER, EMAIL_SAVER_HEADERS)
-    row = [row_data.get(h, "") for h in EMAIL_SAVER_HEADERS]
-    append_rows_safe(ws, [row], EMAIL_SAVER_HEADERS)
+    all_values = ws.get_all_values()
+    if not all_values:
+        ws.append_row(EMAIL_SAVER_HEADERS, value_input_option="RAW")
+        format_email_saver_sheet(ws)
+        all_values = [EMAIL_SAVER_HEADERS]
+
+    header = all_values[0]
+
+    email_col = header.index("email") if "email" in header else -1
+    company_col = header.index("companyName") if "companyName" in header else -1
+    person_col = header.index("personName") if "personName" in header else -1
+
+    target_email = str(row_data.get("email", "")).strip().lower()
+    target_company = str(row_data.get("companyName", "")).strip().lower()
+    target_person = str(row_data.get("personName", "")).strip().lower()
+
+    matched_row_idx = None
+    for i, row in enumerate(all_values[1:], start=2):
+        row_email = row[email_col].strip().lower() if email_col >= 0 and len(row) > email_col else ""
+        row_company = row[company_col].strip().lower() if company_col >= 0 and len(row) > company_col else ""
+        row_person = row[person_col].strip().lower() if person_col >= 0 and len(row) > person_col else ""
+
+        # Match primarily by email
+        if target_email and "@" in target_email and row_email == target_email:
+            matched_row_idx = i
+            break
+        # Fallback match by companyName + personName
+        if target_company and target_person and row_company == target_company and row_person == target_person:
+            matched_row_idx = i
+            break
+
+    if matched_row_idx:
+        existing_row = all_values[matched_row_idx - 1]
+        updated_row = list(existing_row)
+        while len(updated_row) < len(header):
+            updated_row.append("")
+
+        for col_idx, h in enumerate(header):
+            if h in row_data:
+                new_val = row_data[h]
+                if new_val != "" or h in ["outreachStatus", "subject", "emailBody", "sentAt"]:
+                    updated_row[col_idx] = str(new_val)
+
+        ws.update(values=[updated_row], range_name=f"A{matched_row_idx}")
+        print(f"   [UPDATE] Updated existing lead at row {matched_row_idx} in {EMAIL_SAVER}: {target_email or target_person}")
+        return matched_row_idx
+    else:
+        new_row_dict = {
+            "companyName": row_data.get("companyName", ""),
+            "personName": row_data.get("personName", ""),
+            "email": row_data.get("email", ""),
+            "designation": row_data.get("designation", ""),
+            "linkedinUrl": row_data.get("linkedinUrl", ""),
+            "addedAt": row_data.get("addedAt") or datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "subject": row_data.get("subject", ""),
+            "emailBody": row_data.get("emailBody", ""),
+            "outreachStatus": row_data.get("outreachStatus", "PENDING"),
+            "sentAt": row_data.get("sentAt", ""),
+        }
+        row = [str(new_row_dict.get(h, "")) for h in header]
+        new_row_idx = len(all_values) + 1
+        append_rows_safe(ws, [row], header)
+
+        # Ensure the newly added row has clean white formatting and clipped text wrap
+        try:
+            ws.spreadsheet.batch_update({
+                "requests": [{
+                    "repeatCell": {
+                        "range": {
+                            "sheetId": ws.id,
+                            "startRowIndex": new_row_idx - 1,
+                            "endRowIndex": new_row_idx,
+                        },
+                        "cell": {
+                            "userEnteredFormat": {
+                                "backgroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
+                                "textFormat": {
+                                    "bold": False,
+                                    "fontSize": 10,
+                                    "foregroundColor": {"red": 0.1, "green": 0.1, "blue": 0.1}
+                                },
+                                "verticalAlignment": "MIDDLE",
+                                "wrapStrategy": "CLIP"
+                            }
+                        },
+                        "fields": "userEnteredFormat(backgroundColor,textFormat,verticalAlignment,wrapStrategy)"
+                    }
+                }]
+            })
+        except Exception:
+            pass
+
+        print(f"   [INSERT] Added new lead to {EMAIL_SAVER}: {target_person} ({target_email})")
+        return new_row_idx
+
+
+def update_email_outreach_status(gc, email: str, subject: str, email_body: str, status: str, sent_at: str = ""):
+    """Update outreach columns (subject, emailBody, outreachStatus, sentAt) for an existing lead by email."""
+    return upsert_email_saver_row(gc, {
+        "email": email,
+        "subject": subject,
+        "emailBody": email_body,
+        "outreachStatus": status,
+        "sentAt": sent_at,
+    })
+
+
+def append_to_email_saver(gc, row_data: dict):
+    """Upsert a contact to the EMAIL_SAVER sheet (edits existing row if present, appends otherwise)."""
+    return upsert_email_saver_row(gc, row_data)
 
 
 def get_email_saver_entries(gc):

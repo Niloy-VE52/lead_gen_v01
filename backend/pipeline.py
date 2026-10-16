@@ -437,6 +437,7 @@ def run_scoring_pipeline(
                             update_status(run_id, f"✉️ Outreach [{mode_label}]: {full_name} ({c_name})...")
 
                             email_body = ""
+                            email_subject = ""
                             outreach_status = "PENDING"
                             sent_at = ""
 
@@ -448,13 +449,14 @@ def run_scoring_pipeline(
                                     test_override=test_email_recipient,
                                     outreach_mode=outreach_mode,
                                 )
+                                email_subject = send_res.get("subject", "")
+                                email_body = send_res.get("body", "")
                                 if send_res.get("success"):
                                     sent_recipient = send_res.get("recipient", email)
                                     if outreach_mode == "live":
                                         outreach_status = f"SENT (Live to {sent_recipient})"
                                     else:
                                         outreach_status = f"SENT (Test Sandbox: {sent_recipient})"
-                                    email_body = f"Subject: {send_res.get('subject')}\n\n{send_res.get('body')}"
                                     sent_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                                     total_emails_sent += 1
                                 else:
@@ -470,6 +472,7 @@ def run_scoring_pipeline(
                                 "designation": designation,
                                 "linkedinUrl": linkedin_url,
                                 "addedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "subject": email_subject,
                                 "emailBody": email_body,
                                 "outreachStatus": outreach_status,
                                 "sentAt": sent_at,

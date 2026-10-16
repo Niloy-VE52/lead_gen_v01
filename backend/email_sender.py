@@ -45,14 +45,32 @@ OUR_VALUE_PROPOSITION = """
 - Scale your support, operations, or technical capacity up or down instantly
 """
 
-SENDER_NAME = "Sandipan"
+SENDER_NAME = "Sandipan Sarkar"
 SENDER_TITLE = "Outsourcing & Operations"
-SENDER_COMPANY = "Offshore Talent Solutions"
-SENDER_SIGNATURE = f"""
-Best regards,
+SENDER_COMPANY = "Virtual Employee"
+SENDER_SIGNATURE = f"""Best regards,
 {SENDER_NAME}
 {SENDER_TITLE} | {SENDER_COMPANY}
 """
+
+def get_free_trial_and_closing(company_name: str = "") -> str:
+    comp = company_name.strip() if company_name else "your company"
+    return f"""Free Trial and Candidate Selection
+To help you make an informed decision, we would be happy to offer a free trial with a suitable in-house professional. This will allow you to evaluate their technical expertise, communication, collaboration, and overall fit with your team before making any commitment.
+
+You can also explore our Virtual Employee Candidate Trial Portal to:
+• Browse available candidates and filter them by domain and skill set.
+• Review candidate profiles and resumes.
+• Select the professional who best matches your requirements.
+• Start a free trial and evaluate the engagement firsthand.
+
+If you're open to exploring this option, I'd be happy to arrange a short call to understand your support requirements or share a few relevant candidate profiles for your review.
+
+We look forward to the opportunity to support {comp} in finding the right talent and building a scalable, cost-effective support team.
+
+Best regards,
+{SENDER_NAME}
+{SENDER_TITLE} | {SENDER_COMPANY}"""
 
 
 # =============================================================================
@@ -152,23 +170,20 @@ def get_company_context(company_name: str, gc=None) -> dict:
 def build_prompt(contact: dict, context: dict) -> str:
     """Step 2: Formulates a tailored B2B cold email prompt."""
     person_name = contact.get("personName") or "there"
+    first_name = person_name.split()[0] if person_name else "there"
     designation = contact.get("designation") or "Leadership"
     company_name = contact.get("companyName") or "your company"
 
-    return f"""You are an elite B2B sales development copywriter. Write a highly personalized, natural 1-on-1 cold email to a decision-maker.
+    closing_section = get_free_trial_and_closing(company_name)
 
---- 1. ABOUT US ---
+    return f"""You are an elite B2B sales development copywriter for Virtual Employee. Write a highly personalized 1-on-1 cold email to a decision-maker.
+
+--- 1. ABOUT VIRTUAL EMPLOYEE ---
 What we do:
-{OUR_SERVICE_DESCRIPTION.strip()}
-
-Core Value Proposition:
-{OUR_VALUE_PROPOSITION.strip()}
-
-Sender Signature:
-{SENDER_SIGNATURE.strip()}
+We provide dedicated, pre-vetted remote talent and support specialists tailored specifically to fast-growing companies, eliminating slow hiring bottlenecks, recruitment fees, and overhead of full-time staffing.
 
 --- 2. TARGET LEAD ---
-Name: {person_name}
+Name: {person_name} (First Name: {first_name})
 Title: {designation}
 Company: {company_name}
 
@@ -182,28 +197,26 @@ Job Highlights: {context.get('jobDescriptionSnippet') or 'N/A'}
 Reviews Sentiment: {context.get('reviewSummary') or 'N/A'}
 Scoring Reason: {context.get('scoreReason') or 'Operational growth fit.'}
 
---- 4. COPYWRITING RULES ---
-1. Subject line: 3 to 6 words maximum. Lowercase or sentence case. No spam words.
-2. Body length: Keep it short (70 to 110 words total).
-3. The Opening Hook: Acknowledge their company, recent growth, or hiring priorities.
-4. The Bridge: Connect their likely scaling/workload pressure to how our pre-vetted hourly experts remove hiring headaches and overhead.
-5. The Call to Action (CTA): Low friction (e.g. "Open to a brief 5-min chat next week?").
-6. Tone: Direct, warm, conversational peer. Avoid corporate fluff or hype.
+--- 4. COPYWRITING RULES & REQUIRED STRUCTURE ---
+1. Subject line: 3 to 6 words maximum. Lowercase or sentence case. No spam words (e.g. "Scaling support at {company_name}").
+2. Opening Hook: 1-2 personalized sentences acknowledging {company_name}, their recent growth, funding, or hiring priorities for {context.get('jobTitle') or 'support specialists'}.
+3. The Bridge: 1-2 sentences connecting their scaling/support workload to how Virtual Employee deploys dedicated, pre-vetted professionals without hiring delays.
+4. The remaining closing section must be included exactly as provided below:
+
+{closing_section}
 
 --- 5. REQUIRED JSON OUTPUT ---
 Return ONLY a valid JSON object:
 {{
   "subject": "<3-6 words subject line>",
-  "opening_hook": "<1 sentence personalized observation>",
-  "pain_point_bridge": "<1-2 sentences connecting pain to our solution>",
-  "value_proposition": "<1 sentence clear benefit>",
-  "call_to_action": "<1 short low-friction ask>",
-  "full_body": "<Complete email text ready to send>"
+  "opening_hook": "<1-2 sentence personalized observation>",
+  "pain_point_bridge": "<1-2 sentences connecting pain to our dedicated talent solution>",
+  "full_body": "Hi {first_name},\\n\\n<opening_hook>\\n\\n<pain_point_bridge>\\n\\n{closing_section}"
 }}
 """
 
 
-def generate_email_content(prompt: str) -> dict:
+def generate_email_content(prompt: str, company_name: str = "", person_name: str = "") -> dict:
     """Step 3: Calls LLM (OpenAI with Groq fallback) to generate the subject & body."""
     content_text = ""
     try:
@@ -240,13 +253,17 @@ def generate_email_content(prompt: str) -> dict:
     data = json.loads(cleaned)
 
     subject = data.get("subject", "Connecting regarding operations")
-    full_body = data.get("full_body") or (
-        f"{data.get('opening_hook', '')}\n\n"
-        f"{data.get('pain_point_bridge', '')}\n\n"
-        f"{data.get('value_proposition', '')}\n\n"
-        f"{data.get('call_to_action', '')}\n\n"
-        f"{SENDER_SIGNATURE}"
-    )
+    first_name = person_name.split()[0] if person_name else "there"
+    closing_section = get_free_trial_and_closing(company_name)
+
+    full_body = data.get("full_body")
+    if not full_body or "Free Trial and Candidate Selection" not in full_body:
+        full_body = (
+            f"Hi {first_name},\n\n"
+            f"{data.get('opening_hook', '')}\n\n"
+            f"{data.get('pain_point_bridge', '')}\n\n"
+            f"{closing_section}"
+        )
 
     return {"subject": subject, "body": full_body, "meta": data}
 
@@ -338,7 +355,7 @@ def run_email_pipeline(
 
     # Step 3: LLM Generation
     print("   [3/4] Generating personalized email copy...")
-    content = generate_email_content(prompt)
+    content = generate_email_content(prompt, company_name=company_name, person_name=person_name)
     subject = content["subject"]
     body = content["body"]
 
@@ -405,6 +422,22 @@ def send_all_saved_leads(dry_run: bool = False, delay_range: tuple = (35, 75)):
         for idx, contact in enumerate(valid_leads, start=1):
             print(f"\n>>> [{idx}/{len(valid_leads)}] Starting lead: {contact.get('personName')}")
             result = run_email_pipeline(contact, dry_run=dry_run, gc=gc)
+
+            if not dry_run and result.get("original_email"):
+                from datetime import datetime
+                from backend.sheets_helper import update_email_outreach_status
+                sent_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S") if result.get("success") else ""
+                rec = result.get("recipient", contact.get("email"))
+                status = f"SENT ({rec})" if result.get("success") else f"FAILED: {result.get('error', 'SMTP Error')}"
+
+                update_email_outreach_status(
+                    gc,
+                    email=result.get("original_email"),
+                    subject=result.get("subject", ""),
+                    email_body=result.get("body", ""),
+                    status=status,
+                    sent_at=sent_at,
+                )
 
             if result.get("success") and not dry_run and idx < len(valid_leads):
                 wait_sec = random.randint(*delay_range)

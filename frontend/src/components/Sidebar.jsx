@@ -27,12 +27,19 @@ const IconEmail = () => (
   </svg>
 );
 
+const IconSparkles = () => (
+  <svg className="nav-icon" viewBox="0 0 16 16" fill="none">
+    <path d="M8 1.5l1.5 4 4 1.5-4 1.5-1.5 4-1.5-4-4-1.5 4-1.5 1.5-4z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+  </svg>
+);
+
 const NAV_ITEMS = [
-  { id: "home",    label: "Home",         Icon: IconHome    },
-  { id: "run",     label: "Run Pipeline", Icon: IconRun     },
-  { id: "history", label: "Run History",  Icon: IconHistory },
-  { id: "sheets",  label: "Sheets",       Icon: IconSheet   },
-  { id: "emails",  label: "Email Finder", Icon: IconEmail   },
+  { id: "home",     label: "Home",           Icon: IconHome     },
+  { id: "run",      label: "Run Pipeline",   Icon: IconRun      },
+  { id: "history",  label: "Run History",    Icon: IconHistory  },
+  { id: "sheets",   label: "Sheets",         Icon: IconSheet    },
+  { id: "emails",   label: "Email Finder",   Icon: IconEmail    },
+  { id: "showcase", label: "Email Showcase", Icon: IconSparkles },
 ];
 
 export default function Sidebar({ tab, onTabChange, runCount, className = "" }) {

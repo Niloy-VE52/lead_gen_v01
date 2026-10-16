@@ -12,6 +12,7 @@ import RunPage     from "./RunPage";
 import RunHistory  from "./RunHistory";
 import SheetsPage  from "./SheetsPage";
 import EmailFinderPage from "./EmailFinderPage";
+import EmailShowcasePage from "./EmailShowcasePage";
 
 export default function App() {
   const [config, setConfig]           = useState(DEFAULT_CONFIG);
@@ -75,6 +76,7 @@ export default function App() {
           <div style={{ display: tab === "emails" ? "block" : "none" }}>
             <EmailFinderPage />
           </div>
+          {tab === "showcase" && <EmailShowcasePage />}
         </div>
       </div>
     </div>

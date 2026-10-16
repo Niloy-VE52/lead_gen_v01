@@ -7,14 +7,28 @@ export async function apiPost(path, body) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try {
+      const errData = await res.json();
+      if (errData && errData.detail) msg = errData.detail;
+    } catch (_) {}
+    throw new Error(msg);
+  }
   return res.json();
 }
 
 export async function apiGet(path) {
   const urlPath = path.startsWith("/") ? path : `/${path}`;
   const res = await fetch(`${BASE_URL}${urlPath}`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try {
+      const errData = await res.json();
+      if (errData && errData.detail) msg = errData.detail;
+    } catch (_) {}
+    throw new Error(msg);
+  }
   return res.json();
 }
 
