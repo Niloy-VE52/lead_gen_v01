@@ -58,7 +58,7 @@ def get_free_trial_and_closing(company_name: str = "") -> str:
     return f"""Free Trial and Candidate Selection
 To help you make an informed decision, we would be happy to offer a free trial with a suitable in-house professional. This will allow you to evaluate their technical expertise, communication, collaboration, and overall fit with your team before making any commitment.
 
-You can also explore our Virtual Employee Candidate Trial Portal to:
+You can also explore our Virtual Employee Candidate Trial Portal (https://trials.virtualemployee.com/v2?utm_source=api&utm_medium=automation&utm_campaign=api_automation) to:
 • Browse available candidates and filter them by domain and skill set.
 • Review candidate profiles and resumes.
 • Select the professional who best matches your requirements.
