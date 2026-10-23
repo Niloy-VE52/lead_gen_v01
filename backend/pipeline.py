@@ -591,4 +591,4 @@ def run_email_finder_pipeline(run_id: str, company_url: str, company_name: str):
         })
 
     except Exception as e:
-        fail(run_id, f"{e}\n{traceback.format_exc()}")
+        fail(run_id, f"{e}\n{traceback.format_exc()}")

@@ -76,7 +76,7 @@ Best regards,
 # =============================================================================
 # ⚙️ [SECTION 2: SMTP CONFIGURATION (GMAIL & OUTLOOK)]
 # =============================================================================
-DEFAULT_SENDER = "annoymous0409@gmail.com"
+DEFAULT_SENDER = "outreach@virtualemployee.com"
 
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
@@ -279,7 +279,7 @@ def send_email(to_email: str, subject: str, body: str, is_html: bool = False) ->
         return False
 
     msg = MIMEMultipart("alternative")
-    msg["From"] = SMTP_USER
+    msg["From"] = DEFAULT_SENDER
     msg["To"] = to_email
     msg["Subject"] = subject
     msg.attach(MIMEText(body, "html" if is_html else "plain"))
