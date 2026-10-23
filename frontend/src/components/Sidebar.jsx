@@ -20,26 +20,20 @@ const IconSheet = () => (
     <path d="M2 6h12M2 10h12M6 2v12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
   </svg>
 );
-const IconEmail = () => (
+
+const IconMail = () => (
   <svg className="nav-icon" viewBox="0 0 16 16" fill="none">
     <rect x="1.5" y="3" width="13" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
     <path d="M1.5 5l6.5 4 6.5-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
-const IconSparkles = () => (
-  <svg className="nav-icon" viewBox="0 0 16 16" fill="none">
-    <path d="M8 1.5l1.5 4 4 1.5-4 1.5-1.5 4-1.5-4-4-1.5 4-1.5 1.5-4z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-  </svg>
-);
-
 const NAV_ITEMS = [
-  { id: "home",     label: "Home",           Icon: IconHome     },
-  { id: "run",      label: "Run Pipeline",   Icon: IconRun      },
-  { id: "history",  label: "Run History",    Icon: IconHistory  },
-  { id: "sheets",   label: "Sheets",         Icon: IconSheet    },
-  { id: "emails",   label: "Email Finder",   Icon: IconEmail    },
-  { id: "showcase", label: "Email Showcase", Icon: IconSparkles },
+  { id: "home",     label: "Home",             Icon: IconHome     },
+  { id: "run",      label: "Run Pipeline",     Icon: IconRun      },
+  { id: "history",  label: "Pipeline History", Icon: IconHistory  },
+  { id: "outreach", label: "Outreach History", Icon: IconMail     },
+  { id: "sheets",   label: "Sheets",           Icon: IconSheet    },
 ];
 
 export default function Sidebar({ tab, onTabChange, runCount, className = "" }) {

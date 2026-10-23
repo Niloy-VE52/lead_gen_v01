@@ -11,8 +11,7 @@ import HomePage    from "./HomePage";
 import RunPage     from "./RunPage";
 import RunHistory  from "./RunHistory";
 import SheetsPage  from "./SheetsPage";
-import EmailFinderPage from "./EmailFinderPage";
-import EmailShowcasePage from "./EmailShowcasePage";
+import EmailOutreachTracker from "./EmailOutreachTracker";
 
 export default function App() {
   const [config, setConfig]           = useState(DEFAULT_CONFIG);
@@ -71,12 +70,9 @@ export default function App() {
         <div className="content">
           {tab === "home"    && <HomePage runs={runs} onNavigate={setTab} onLaunch={launch} launching={launching} />}
           {tab === "run"     && <RunPage config={config} onConfigChange={setConfig} onLaunch={launch} launching={launching} error={error} activeRunId={activeRunId} onRunDone={handleRunDone} />}
-          {tab === "history" && <><div className="section-heading">All Pipeline Runs</div><RunHistory runs={runs} activeRunId={activeRunId} /></>}
-          {tab === "sheets"  && <SheetsPage />}
-          <div style={{ display: tab === "emails" ? "block" : "none" }}>
-            <EmailFinderPage />
-          </div>
-          {tab === "showcase" && <EmailShowcasePage />}
+          {tab === "history"  && <><div className="section-heading">Pipeline Run History</div><RunHistory runs={runs} activeRunId={activeRunId} /></>}
+          {tab === "outreach" && <EmailOutreachTracker />}
+          {tab === "sheets"   && <SheetsPage />}
         </div>
       </div>
     </div>

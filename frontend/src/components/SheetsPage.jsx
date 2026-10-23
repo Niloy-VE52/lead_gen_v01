@@ -14,7 +14,7 @@ const SHEETS = [
         <path d="M3 9h18M3 15h18M9 3v18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
       </svg>
     ),
-    stats: ["Job Title", "Company", "Location", "Funding Stage", "Reviews"],
+    stats: ["Pipeline ID", "Job Title", "Company", "Location", "Funding Stage"],
   },
   {
     title:       "Scored Leads",
@@ -30,7 +30,7 @@ const SHEETS = [
         <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
-    stats: ["Total Score", "Decision", "Priority", "Execution Signal", "Company Fit"],
+    stats: ["Pipeline ID", "Total Score", "Decision", "Priority", "Company Fit"],
   },
   {
     title:       "Email Saver",
@@ -46,7 +46,7 @@ const SHEETS = [
         <path d="M22 4L12 13L2 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
-    stats: ["Company", "Contact Name", "Email", "Designation", "LinkedIn"],
+    stats: ["Pipeline ID", "Date Time", "Company", "Contact Name", "Email"],
   },
 ];
 

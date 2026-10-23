@@ -1,5 +1,6 @@
 import os
 import traceback
+from datetime import datetime
 from groq import Groq
 from backend.scraper import scrape_linkedin_jobs, check_repeatability, is_company_size_valid
 from backend.job_store import job_status_store
@@ -157,6 +158,10 @@ def run_full_pipeline(run_id: str, config: dict):
 
         # ── Step 7: Write to sheet ─────────────────────────────
         update_status(run_id, f"📊 Writing {len(enriched)} jobs to sheet...")
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        for row in enriched:
+            row["pipeline ID"] = run_id
+            row["Date Time"] = now_str
         sheet_rows = [
             [row.get(h, "") for h in SCRAPED_HEADERS]
             for row in enriched
@@ -274,6 +279,8 @@ def run_scoring_pipeline(
                 result = scorer.score_lead(job)
 
                 score_row = {
+                    "pipeline ID": job.get("pipeline ID") or job.get("pipelineId") or run_id,
+                    "Date Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     "jobTitle": job.get("jobTitle", ""),
                     "jobUrl": job.get("jobUrl", ""),
                     "companyName": job.get("companyName", ""),
@@ -466,6 +473,8 @@ def run_scoring_pipeline(
                                 outreach_status = f"FAILED: {send_err}"
 
                             row_data = {
+                                "pipeline ID": run_id,
+                                "Date Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                 "companyName": c_name,
                                 "personName": full_name,
                                 "email": email,
@@ -505,6 +514,10 @@ def run_scoring_pipeline(
 def _upsert_with_retry(run_id: str, score_row: dict, max_attempts: int = 3):
     import time
     last_error = None
+    if "pipeline ID" not in score_row:
+        score_row["pipeline ID"] = run_id
+    if "Date Time" not in score_row:
+        score_row["Date Time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     for attempt in range(max_attempts):
         try:
             gc = get_gc()

@@ -13,11 +13,13 @@ SCORING_SHEET_NAME  = "Scored_Lead_V7"
 EMAIL_SAVER = "Email_saver"
 
 EMAIL_SAVER_HEADERS = [
-    "companyName", "personName", "email", "designation", "linkedinUrl", "addedAt", "subject", "emailBody", "outreachStatus", "sentAt"
+    "pipeline ID", "Date Time", "companyName", "personName", "email", "designation", "linkedinUrl", "addedAt", "subject", "emailBody", "outreachStatus", "sentAt"
 ]
 
 # ── Column definitions ─────────────────────────────────────────
 SCRAPED_HEADERS = [
+    "pipeline ID",
+    "Date Time",
     "jobId", "jobTitle", "jobUrl", "jobDescription",
     "companyName", "location", "publishedAt", "publishedDate",
     "contractType", "experienceLevel", "workType",
@@ -31,11 +33,13 @@ SCRAPED_HEADERS = [
 ]
 
 SCORING_HEADERS = [
+    "pipeline ID",
+    "Date Time",
     "jobTitle", "jobUrl", "companyName", "location",
     "workType", "experienceLevel", "sector",
     "companyEmployeeCount","Execution Signal", "Hiring Intent", "Company Fit",
     "Remote Readiness", "Buying Trigger", "Repost Bonus",
-    "Enrichment Confidence", "total_score", "decision", "priority", "reason", "Date"
+    "Enrichment Confidence", "total_score", "decision", "priority", "reason",
 ]
 
 
@@ -70,16 +74,9 @@ def get_or_create_sheet(gc, sheet_name: str, headers: list):
             elif row0_cleaned == headers:
                 pass
             else:
-                matches = sum(1 for h in headers if h in row0_cleaned)
-                if matches >= 2:
-                    # First row is already a header row. Update in place instead of inserting duplicates!
-                    ws.update(values=[headers], range_name="A1")
-                    format_fn(ws)
-                else:
-                    # Header is genuinely missing (first row is real data) — insert at row 1
-                    ws.insert_row(headers, index=1, value_input_option="RAW")
-                    print(f"   ⚠️ Header was missing in {sheet_name} — inserted at row 1")
-                    format_fn(ws)
+                ws.update(values=[headers], range_name="A1")
+                format_fn(ws)
+                print(f"   [+] Updated headers in {sheet_name}")
 
         return spreadsheet, ws
 
@@ -472,6 +469,8 @@ def upsert_email_saver_row(gc, row_data: dict):
         return matched_row_idx
     else:
         new_row_dict = {
+            "pipeline ID": row_data.get("pipeline ID", ""),
+            "Date Time": row_data.get("Date Time") or datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "companyName": row_data.get("companyName", ""),
             "personName": row_data.get("personName", ""),
             "email": row_data.get("email", ""),
