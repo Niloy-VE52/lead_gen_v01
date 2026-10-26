@@ -1,6 +1,22 @@
 import os
+import sys
 import traceback
 from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
+
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+if hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 from groq import Groq
 from backend.scraper import scrape_linkedin_jobs, check_repeatability, is_company_size_valid
 from backend.job_store import job_status_store
@@ -24,14 +40,15 @@ from backend.funding_checker import enrich_funding
 from backend.scoring import LeadScorer
 from openai import OpenAI
 
-# ── LLM client (Groq) ─────────────────────────────────────────
+# ── LLM client ────────────────────────────────────────────────
 
 def build_llm_client():
     client = OpenAI()
+    model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
     def llm_client(prompt: str) -> str:
         response = client.chat.completions.create(
-            model="gpt-5-mini",
+            model=model_name,
             messages=[
                 {"role": "user", "content": prompt}
             ],
@@ -52,7 +69,13 @@ def update_status(run_id: str, step: str, extra: dict = None):
     if extra:
         entry.update(extra)
     job_status_store[run_id] = entry
-    print(f"[{run_id}] {step}")
+    try:
+        print(f"[{run_id}] {step}")
+    except Exception:
+        try:
+            print(f"[{run_id}] {step.encode('ascii', errors='replace').decode('ascii')}")
+        except Exception:
+            pass
 
 
 def finish(run_id: str, message: str, data: dict = None):
@@ -224,21 +247,32 @@ def run_scoring_pipeline(
             SCORING_HEADERS
         )
 
-        already_scored_count = len(
-            get_all_rows_as_dicts(score_ws)
-        )
+        scored_rows = get_all_rows_as_dicts(score_ws)
+        scored_urls = {
+            str(r.get("jobUrl", "")).strip()
+            for r in scored_rows
+            if str(r.get("jobUrl", "")).strip()
+        }
 
         # ── Pick only unscored jobs ────────────────────────────
-        to_score = all_jobs[already_scored_count:]
-
         if target_job_id:
             target_job_id = str(target_job_id).strip()
-
             to_score = [
                 row
                 for row in all_jobs
                 if str(row.get("jobId", "")).strip() == target_job_id
             ]
+        else:
+            # First check if there are jobs specifically from this current run_id
+            run_jobs = [
+                row
+                for row in all_jobs
+                if str(row.get("pipeline ID", "")).strip() == str(run_id).strip()
+            ]
+            if run_jobs:
+                to_score = [r for r in run_jobs if str(r.get("jobUrl", "")).strip() not in scored_urls]
+            else:
+                to_score = [r for r in all_jobs if str(r.get("jobUrl", "")).strip() not in scored_urls]
 
         if not to_score:
             finish(
@@ -262,6 +296,7 @@ def run_scoring_pipeline(
         scored = 0
         keep_companies = []
         seen_keep_companies = set()
+        last_scoring_error = None
 
         # ── Score jobs ─────────────────────────────────────────
         for idx, job in enumerate(to_score, start=1):
@@ -321,10 +356,18 @@ def run_scoring_pipeline(
                 )
 
             except Exception as e:
+                last_scoring_error = e
                 print(
                     f"[{run_id}] ❌ Failed scoring "
                     f"{company} | {title}: {e}"
                 )
+
+        if to_score and scored == 0 and last_scoring_error:
+            fail(
+                run_id,
+                f"❌ Scoring failed for all {len(to_score)} jobs: {last_scoring_error}"
+            )
+            return
 
         # ── Single batch write ────────────────────────────────
         if rows_to_write:
@@ -369,7 +412,6 @@ def run_scoring_pipeline(
         total_emails_saved = 0
         total_emails_sent = 0
         if keep_companies:
-            from datetime import datetime
             from backend.emailFinder import get_decisionmakers_linkedin, get_email_from_linkedin_profile
             from backend.sheets_helper import append_to_email_saver, get_email_saver_entries
             from backend.email_sender import run_email_pipeline

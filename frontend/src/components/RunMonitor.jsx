@@ -15,7 +15,8 @@ export default function RunMonitor({ runId, onDone }) {
         onDone?.(d);
       }
     } catch (e) {
-      console.error(e);
+      clearInterval(intervalRef.current);
+      console.warn(`Stopped polling /status/${runId} due to error:`, e.message);
     }
   }, [runId, onDone]);
 

@@ -1,11 +1,30 @@
-from fastapi import FastAPI, BackgroundTasks, HTTPException
+import sys
+import os
+import logging
+from dotenv import load_dotenv
 
+load_dotenv()
+
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
+# Filter repetitive polling requests (/status/ and /outreach-status) from console output
+class StatusPollingFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return "/status" not in msg and "/outreach-status" not in msg
+
+logging.getLogger("uvicorn.access").addFilter(StatusPollingFilter())
+
+from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List, Union
 import uuid
 import asyncio
-import os
 
 from backend.pipeline import run_full_pipeline, run_scoring_pipeline
 from backend.job_store import job_status_store

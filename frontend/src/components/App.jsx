@@ -33,17 +33,39 @@ export default function App() {
   useEffect(() => {
     const runningRuns = runs.filter((r) => r.status === "running");
     if (runningRuns.length === 0) return;
-    const timers = runningRuns.map((r) =>
-      setInterval(async () => {
+
+    const timerMap = new Map();
+
+    runningRuns.forEach((r) => {
+      const timerId = setInterval(async () => {
         try {
           const d = await apiGet(`/status/${r.run_id}`);
           setRuns((prev) =>
             prev.map((x) => (x.run_id === d.run_id ? { ...x, ...d } : x))
           );
-        } catch (_) {}
-      }, 3000)
-    );
-    return () => timers.forEach(clearInterval);
+          if (d.status === "done" || d.status === "error") {
+            clearInterval(timerId);
+            timerMap.delete(r.run_id);
+          }
+        } catch (_) {
+          // If 404 (backend restarted) or connection failed, stop polling and mark run inactive
+          clearInterval(timerId);
+          timerMap.delete(r.run_id);
+          setRuns((prev) =>
+            prev.map((x) =>
+              x.run_id === r.run_id
+                ? { ...x, status: "error", error: "Run ended or not found" }
+                : x
+            )
+          );
+        }
+      }, 3000);
+      timerMap.set(r.run_id, timerId);
+    });
+
+    return () => {
+      timerMap.forEach((timerId) => clearInterval(timerId));
+    };
   }, [runs.length]);
 
   const launch = async () => {

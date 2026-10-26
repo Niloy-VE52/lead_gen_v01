@@ -6,7 +6,7 @@ load_dotenv()  # Load environment variables from .env file
 
 
 def get_client():
-    token = os.getenv("APIFY_KEY_2") or os.getenv("APIFY_KEY")
+    token = os.getenv("APIFY_KEY_2") or os.getenv("APIFY_KEY_1") or os.getenv("APIFY_KEY") or os.getenv("APIFY_TOKEN")
     return ApifyClient(token)
 
 
