@@ -57,25 +57,32 @@ export default function EmailOutreachTracker() {
 
   // Derived metrics
   const total = entries.length;
-  const liveSent = entries.filter((e) =>
-    (e.outreachStatus || "").toUpperCase().includes("LIVE")
+  const manualSent = entries.filter((e) =>
+    (e.outreachStatus || "").toUpperCase().includes("MANUAL")
   ).length;
-  const sandboxSent = entries.filter((e) =>
-    (e.outreachStatus || "").toUpperCase().includes("SANDBOX")
-  ).length;
+  const liveSent = entries.filter((e) => {
+    const s = (e.outreachStatus || "").toUpperCase();
+    return s.includes("LIVE") && !s.includes("MANUAL");
+  }).length;
+  const sandboxSent = entries.filter((e) => {
+    const s = (e.outreachStatus || "").toUpperCase();
+    return s.includes("SANDBOX") && !s.includes("MANUAL");
+  }).length;
   const pending = entries.filter((e) => {
     const s = (e.outreachStatus || "").toUpperCase();
-    return s.includes("PENDING") || !s || s === "";
+    return (s.includes("PENDING") || !s || s === "") && !s.includes("FAIL") && !s.includes("SENT");
   }).length;
-  const failed = entries.filter((e) =>
-    (e.outreachStatus || "").toUpperCase().includes("FAIL")
-  ).length;
+  const failed = entries.filter((e) => {
+    const s = (e.outreachStatus || "").toUpperCase();
+    return s.includes("FAIL") && !s.includes("MANUAL");
+  }).length;
 
   // Filtered entries
   const filtered = entries.filter((item) => {
     const status = (item.outreachStatus || "").toUpperCase();
-    if (filter === "live" && !status.includes("LIVE")) return false;
-    if (filter === "sandbox" && !status.includes("SANDBOX")) return false;
+    if (filter === "manual" && !status.includes("MANUAL")) return false;
+    if (filter === "live" && (!status.includes("LIVE") || status.includes("MANUAL"))) return false;
+    if (filter === "sandbox" && (!status.includes("SANDBOX") || status.includes("MANUAL"))) return false;
     if (filter === "pending" && !status.includes("PENDING") && status !== "") return false;
     if (filter === "failed" && !status.includes("FAIL")) return false;
 
@@ -92,6 +99,7 @@ export default function EmailOutreachTracker() {
 
   const getBadgeClass = (statusStr) => {
     const s = (statusStr || "").toUpperCase();
+    if (s.includes("MANUAL")) return "manual";
     if (s.includes("LIVE")) return "live";
     if (s.includes("SANDBOX")) return "sandbox";
     if (s.includes("FAIL")) return "failed";
@@ -127,6 +135,14 @@ export default function EmailOutreachTracker() {
           <span className="tracker-stat-val">{total}</span>
           <span className="tracker-stat-label">Total Leads</span>
         </div>
+        {manualSent > 0 && (
+          <div className="tracker-stat-box">
+            <span className="tracker-stat-val" style={{ color: "#7c3aed" }}>
+              {manualSent}
+            </span>
+            <span className="tracker-stat-label">Manually Sent</span>
+          </div>
+        )}
         <div className="tracker-stat-box">
           <span className="tracker-stat-val" style={{ color: "var(--success)" }}>
             {liveSent}
@@ -162,6 +178,14 @@ export default function EmailOutreachTracker() {
           >
             All ({total})
           </button>
+          {manualSent > 0 && (
+            <button
+              className={`filter-pill ${filter === "manual" ? "active" : ""}`}
+              onClick={() => setFilter("manual")}
+            >
+              Manually Sent ({manualSent})
+            </button>
+          )}
           <button
             className={`filter-pill ${filter === "live" ? "active" : ""}`}
             onClick={() => setFilter("live")}
@@ -236,6 +260,7 @@ export default function EmailOutreachTracker() {
                     <tr key={idx}>
                       <td>
                         <span className={`badge-status ${badgeClass}`}>
+                          {badgeClass === "manual" && "✍️ "}
                           {badgeClass === "live" && "✓ "}
                           {badgeClass === "sandbox" && "🛡️ "}
                           {badgeClass === "pending" && "⏳ "}

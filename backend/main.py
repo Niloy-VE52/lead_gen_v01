@@ -64,6 +64,23 @@ class ScoreInput(BaseModel):
     test_email_recipient: Optional[str] = "niloyvetesting54@gmail.com"
 
 
+class ManualSendInput(BaseModel):
+    email: str
+    company_name: str
+    person_name: str
+    subject: str
+    body: str
+    outreach_mode: str = "test"
+    test_email_recipient: Optional[str] = "niloyvetesting54@gmail.com"
+
+
+class RegenerateEmailInput(BaseModel):
+    company_name: str
+    person_name: str
+    designation: Optional[str] = ""
+    email: Optional[str] = ""
+
+
 
 
 
@@ -175,6 +192,94 @@ def get_outreach_status():
         return {"entries": entries}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/email-template")
+def get_template_endpoint():
+    """Get the currently active email outreach template."""
+    from backend.template_manager import get_template
+    return get_template()
+
+
+@app.post("/email-template")
+def save_template_endpoint(payload: dict):
+    """Save the customized email outreach template."""
+    from backend.template_manager import save_template
+    try:
+        updated = save_template(payload)
+        return {"success": True, "template": updated}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/email-template/reset")
+def reset_template_endpoint():
+    """Reset the email template back to the original default."""
+    from backend.template_manager import reset_template
+    try:
+        default_tpl = reset_template()
+        return {"success": True, "template": default_tpl}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/manual-send")
+def manual_send_endpoint(payload: ManualSendInput):
+    """
+    Manually sends an email for a lead and updates the Email_saver sheet.
+    """
+    from backend.email_sender import manual_send_email
+    try:
+        result = manual_send_email(
+            email=payload.email,
+            company_name=payload.company_name,
+            person_name=payload.person_name,
+            subject=payload.subject,
+            body=payload.body,
+            outreach_mode=payload.outreach_mode,
+            test_email_recipient=payload.test_email_recipient,
+        )
+        if not result.get("success"):
+            raise HTTPException(status_code=400, detail=result.get("error", "Email send failed"))
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/regenerate-email")
+def regenerate_email_endpoint(payload: RegenerateEmailInput):
+    """
+    Regenerates email subject and body using the active template and company context signals.
+    """
+    from backend.email_sender import get_company_context, build_prompt, generate_email_content
+    from backend.sheets_helper import get_gc
+    try:
+        contact = {
+            "companyName": payload.company_name,
+            "personName": payload.person_name,
+            "designation": payload.designation,
+            "email": payload.email,
+        }
+        gc = None
+        try:
+            gc = get_gc()
+        except Exception:
+            pass
+
+        context = get_company_context(payload.company_name, gc=gc)
+        prompt = build_prompt(contact, context)
+        content = generate_email_content(prompt, company_name=payload.company_name, person_name=payload.person_name)
+
+        return {
+            "success": True,
+            "subject": content.get("subject", ""),
+            "body": content.get("body", ""),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 

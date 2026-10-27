@@ -519,10 +519,21 @@ def upsert_email_saver_row(gc, row_data: dict):
         return new_row_idx
 
 
-def update_email_outreach_status(gc, email: str, subject: str, email_body: str, status: str, sent_at: str = ""):
-    """Update outreach columns (subject, emailBody, outreachStatus, sentAt) for an existing lead by email."""
+def update_email_outreach_status(
+    gc,
+    email: str,
+    subject: str,
+    email_body: str,
+    status: str,
+    sent_at: str = "",
+    company_name: str = "",
+    person_name: str = ""
+):
+    """Update outreach columns (subject, emailBody, outreachStatus, sentAt) for an existing lead by email or companyName + personName."""
     return upsert_email_saver_row(gc, {
         "email": email,
+        "companyName": company_name,
+        "personName": person_name,
         "subject": subject,
         "emailBody": email_body,
         "outreachStatus": status,

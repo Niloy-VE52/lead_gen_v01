@@ -202,6 +202,12 @@
   white-space: nowrap;
 }
 
+.badge-status.manual {
+  background: #f5f3ff;
+  color: #7c3aed;
+  border: 1px solid #ddd6fe;
+}
+
 .badge-status.live {
   background: #ecfdf5;
   color: #047857;

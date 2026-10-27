@@ -4,6 +4,8 @@ import json
 import smtplib
 import time
 import random
+import re
+from datetime import datetime
 from pathlib import Path
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -53,24 +55,17 @@ SENDER_SIGNATURE = f"""Best regards,
 {SENDER_TITLE} | {SENDER_COMPANY}
 """
 
+from backend.template_manager import get_template
+
 def get_free_trial_and_closing(company_name: str = "") -> str:
+    tpl = get_template()
     comp = company_name.strip() if company_name else "your company"
-    return f"""Free Trial and Candidate Selection
-To help you make an informed decision, we would be happy to offer a free trial with a suitable in-house professional. This will allow you to evaluate their technical expertise, communication, collaboration, and overall fit with your team before making any commitment.
-
-You can also explore our Virtual Employee Candidate Trial Portal (https://trials.virtualemployee.com/v2?utm_source=api&utm_medium=automation&utm_campaign=api_automation) to:
-• Browse available candidates and filter them by domain and skill set.
-• Review candidate profiles and resumes.
-• Select the professional who best matches your requirements.
-• Start a free trial and evaluate the engagement firsthand.
-
-If you're open to exploring this option, I'd be happy to arrange a short call to understand your support requirements or share a few relevant candidate profiles for your review.
-
-We look forward to the opportunity to support {comp} in finding the right talent and building a scalable, cost-effective support team.
-
-Best regards,
-{SENDER_NAME}
-{SENDER_TITLE} | {SENDER_COMPANY}"""
+    closing = tpl.get("closing_body", "")
+    closing = closing.replace("{company_name}", comp).replace("{comp}", comp)
+    closing = closing.replace("{sender_name}", tpl.get("sender_name", SENDER_NAME))
+    closing = closing.replace("{sender_title}", tpl.get("sender_title", SENDER_TITLE))
+    closing = closing.replace("{sender_company}", tpl.get("sender_company", SENDER_COMPANY))
+    return closing
 
 
 # =============================================================================
@@ -174,13 +169,17 @@ def build_prompt(contact: dict, context: dict) -> str:
     designation = contact.get("designation") or "Leadership"
     company_name = contact.get("companyName") or "your company"
 
+    tpl = get_template()
     closing_section = get_free_trial_and_closing(company_name)
+    val_prop = tpl.get("value_proposition") or "We provide dedicated, pre-vetted remote talent and support specialists tailored specifically to fast-growing companies, eliminating slow hiring bottlenecks, recruitment fees, and overhead of full-time staffing."
+    subject_rule = tpl.get("subject_instruction") or "3 to 6 words maximum. Lowercase or sentence case. No spam words (e.g. \"Scaling support at {company_name}\")."
+    subject_rule = subject_rule.replace("{company_name}", company_name)
 
     return f"""You are an elite B2B sales development copywriter for Virtual Employee. Write a highly personalized 1-on-1 cold email to a decision-maker.
 
 --- 1. ABOUT VIRTUAL EMPLOYEE ---
 What we do:
-We provide dedicated, pre-vetted remote talent and support specialists tailored specifically to fast-growing companies, eliminating slow hiring bottlenecks, recruitment fees, and overhead of full-time staffing.
+{val_prop}
 
 --- 2. TARGET LEAD ---
 Name: {person_name} (First Name: {first_name})
@@ -198,7 +197,7 @@ Reviews Sentiment: {context.get('reviewSummary') or 'N/A'}
 Scoring Reason: {context.get('scoreReason') or 'Operational growth fit.'}
 
 --- 4. COPYWRITING RULES & REQUIRED STRUCTURE ---
-1. Subject line: 3 to 6 words maximum. Lowercase or sentence case. No spam words (e.g. "Scaling support at {company_name}").
+1. Subject line: {subject_rule}
 2. Opening Hook: 1-2 personalized sentences acknowledging {company_name}, their recent growth, funding, or hiring priorities for {context.get('jobTitle') or 'support specialists'}.
 3. The Bridge: 1-2 sentences connecting their scaling/support workload to how Virtual Employee deploys dedicated, pre-vetted professionals without hiring delays.
 4. The remaining closing section must be included exactly as provided below:
@@ -268,8 +267,44 @@ def generate_email_content(prompt: str, company_name: str = "", person_name: str
     return {"subject": subject, "body": full_body, "meta": data}
 
 
+def format_email_to_html(text: str) -> str:
+    """
+    Converts plain text/markdown email copy into clean HTML:
+    - Markdown links [text](url) -> <a href="url" style="color: #2563eb; text-decoration: underline; font-weight: 600;">text</a>
+    - Standalone raw URLs -> <a href="url" style="color: #2563eb; text-decoration: underline;">url</a>
+    - Linebreaks preserved cleanly with <br/>
+    """
+    # 1. Replace markdown links: [Label](https://url)
+    def md_link_repl(match):
+        label = match.group(1)
+        url = match.group(2)
+        return f'<a href="{url}" target="_blank" style="color: #2563eb; text-decoration: underline; font-weight: 600;">{label}</a>'
+
+    processed = re.sub(r'\[([^\]]+)\]\((https?://[^\)]+)\)', md_link_repl, text)
+
+    # 2. Replace standalone raw URLs not already in an href or anchor tag
+    def raw_url_repl(match):
+        url = match.group(0)
+        return f'<a href="{url}" target="_blank" style="color: #2563eb; text-decoration: underline;">{url}</a>'
+
+    processed = re.sub(r'(?<!href=")(?<!">)(https?://[^\s<>"\'\)]+)', raw_url_repl, processed)
+
+    # 3. Convert newlines to clean HTML linebreaks
+    formatted_html = processed.replace("\n", "<br/>")
+
+    return f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.6; color: #1e293b; background-color: #ffffff; margin: 0; padding: 4px;">
+  <div style="max-width: 650px;">
+    {formatted_html}
+  </div>
+</body>
+</html>"""
+
+
 def send_email(to_email: str, subject: str, body: str, is_html: bool = False) -> bool:
-    """Step 4: Dispatches email via standard SMTP."""
+    """Step 4: Dispatches email via standard SMTP sending both plain-text and rich HTML with hyperlinks."""
     if not SMTP_PASSWORD:
         print("   ⚠️ SMTP_PASSWORD or GMAIL_APP_PASSWORD is not set in your .env file.")
         return False
@@ -282,7 +317,14 @@ def send_email(to_email: str, subject: str, body: str, is_html: bool = False) ->
     msg["From"] = DEFAULT_SENDER
     msg["To"] = to_email
     msg["Subject"] = subject
-    msg.attach(MIMEText(body, "html" if is_html else "plain"))
+
+    # 1. Plain text version (falls back cleanly if mail client doesn't support HTML)
+    plain_text = re.sub(r'\[([^\]]+)\]\((https?://[^\)]+)\)', r'\1 (\2)', body)
+    msg.attach(MIMEText(plain_text, "plain", "utf-8"))
+
+    # 2. HTML version with clean clickable hyperlinks
+    html_content = body if is_html else format_email_to_html(body)
+    msg.attach(MIMEText(html_content, "html", "utf-8"))
 
     try:
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
@@ -495,6 +537,77 @@ def test_stored_lead(send_to_email: str = "niloyvetesting54@gmail.com", dry_run:
 
     except Exception as e:
         print(f"❌ Error in test runner: {e}")
+
+
+def manual_send_email(
+    email: str,
+    company_name: str,
+    person_name: str,
+    subject: str,
+    body: str,
+    outreach_mode: str = "test",
+    test_email_recipient: str | None = None,
+    gc=None
+) -> dict:
+    """
+    Manually sends an email for a failed/pending lead and updates Email_saver in Google Sheets.
+    Marks status as 'SENT (Manually Sent to <prospect>)' or 'SENT (Manually Sent - Sandbox: <test>)'.
+    """
+    try:
+        raw_email = email.strip()
+        if outreach_mode == "live":
+            send_recipient = raw_email
+        elif test_email_recipient and test_email_recipient.strip():
+            send_recipient = test_email_recipient.strip()
+        elif TEST_EMAIL_OVERRIDE and TEST_EMAIL_OVERRIDE.strip():
+            send_recipient = TEST_EMAIL_OVERRIDE.strip()
+        else:
+            send_recipient = raw_email
+
+        if not send_recipient or "@" not in send_recipient:
+            return {"success": False, "error": "Invalid recipient email address"}
+
+        sent = send_email(to_email=send_recipient, subject=subject, body=body)
+
+        if sent:
+            sent_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            if outreach_mode == "live":
+                new_status = f"SENT (Manually Sent to {send_recipient})"
+            else:
+                new_status = f"SENT (Manually Sent - Sandbox: {send_recipient})"
+
+            try:
+                if gc is None:
+                    from backend.sheets_helper import get_gc
+                    gc = get_gc()
+                from backend.sheets_helper import update_email_outreach_status
+                update_email_outreach_status(
+                    gc,
+                    email=raw_email,
+                    subject=subject,
+                    email_body=body,
+                    status=new_status,
+                    sent_at=sent_at,
+                    company_name=company_name,
+                    person_name=person_name
+                )
+            except Exception as sheet_err:
+                print(f"⚠️ Could not update Email_saver sheet after manual send: {sheet_err}")
+
+            return {
+                "success": True,
+                "status": new_status,
+                "sent_at": sent_at,
+                "recipient": send_recipient
+            }
+        else:
+            return {
+                "success": False,
+                "error": "SMTP server failed to deliver the email. Please check your SMTP credentials in .env."
+            }
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 # =============================================================================

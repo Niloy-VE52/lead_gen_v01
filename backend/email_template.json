@@ -1,0 +1,9 @@
+{
+  "sender_name": "Sheela",
+  "sender_title": "Outsourcing & Operations",
+  "sender_company": "Virtual Employee",
+  "subject_instruction": "3 to 6 words maximum. Lowercase or sentence case. No spam words (e.g. Scaling support at {company_name}).",
+  "value_proposition": "We provide dedicated, pre-vetted remote talent and support specialists tailored specifically to fast-growing companies, eliminating slow hiring bottlenecks, recruitment fees, and overhead of full-time staffing.",
+  "closing_body": "Free Trial and Candidate Selection\nTo help you make an informed decision, we would be happy to offer a free trial with a suitable in-house professional. This will allow you to evaluate their technical expertise, communication, collaboration, and overall fit with your team before making any commitment.\n [Virtual Employee Candidate Trial Portal](https://trials.virtualemployee.com/v2?utm_source=api&utm_medium=automation&utm_campaign=api_automation)\nYou can also explore our to:\n• Browse available candidates and filter them by domain and skill set.\n• Review candidate profiles and resumes.\n• Select the professional who best matches your requirements.\n• Start a free trial and evaluate the engagement firsthand.\n\nIf you're open to exploring this option, I'd be happy to arrange a short call to understand your support requirements or share a few relevant candidate profiles for your review.\n\nWe look forward to the opportunity to support {company_name} in finding the right talent and building a scalable, cost-effective support team.\n\nBest regards,\n{sender_name}\n{sender_title} | {sender_company}",
+  "last_updated": "2026-10-27 11:40:05"
+}

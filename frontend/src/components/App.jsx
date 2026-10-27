@@ -12,6 +12,8 @@ import RunPage     from "./RunPage";
 import RunHistory  from "./RunHistory";
 import SheetsPage  from "./SheetsPage";
 import EmailOutreachTracker from "./EmailOutreachTracker";
+import TemplateEditor from "./TemplateEditor";
+import ManualOutreach from "./ManualOutreach";
 
 export default function App() {
   const [config, setConfig]           = useState(DEFAULT_CONFIG);
@@ -94,6 +96,8 @@ export default function App() {
           {tab === "run"     && <RunPage config={config} onConfigChange={setConfig} onLaunch={launch} launching={launching} error={error} activeRunId={activeRunId} onRunDone={handleRunDone} />}
           {tab === "history"  && <><div className="section-heading">Pipeline Run History</div><RunHistory runs={runs} activeRunId={activeRunId} /></>}
           {tab === "outreach" && <EmailOutreachTracker />}
+          {tab === "manual"   && <ManualOutreach onNavigate={setTab} />}
+          {tab === "template" && <TemplateEditor />}
           {tab === "sheets"   && <SheetsPage />}
         </div>
       </div>
