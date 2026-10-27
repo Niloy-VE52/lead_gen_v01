@@ -475,16 +475,6 @@ export default function ManualOutreach({ onNavigate }) {
                       ? "Send Live Email Now"
                       : "Send Test Email Now"}
                   </button>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={handleRegenerate}
-                    disabled={regenerating || sending}
-                    title="Regenerate this email using the latest saved template"
-                  >
-                    <IconRefresh spinning={regenerating} />
-                    {regenerating ? "Regenerating..." : "Regenerate Template"}
-                  </button>
                   {onNavigate && (
                     <button
                       type="button"

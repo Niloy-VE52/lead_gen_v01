@@ -21,10 +21,15 @@ export default function App() {
   const [runs, setRuns]               = useState(() => loadRuns());
   const [launching, setLaunching]     = useState(false);
   const [error, setError]             = useState(null);
-  const [tab, setTab]                 = useState("home");
+  const VALID_TABS = ["home", "run", "history", "outreach", "manual", "template", "sheets"];
+  const [tab, setTab]                 = useState(() => {
+    const saved = localStorage.getItem("lead_gen_active_tab");
+    return VALID_TABS.includes(saved) ? saved : "home";
+  });
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => { saveRuns(runs); }, [runs]);
+  useEffect(() => { localStorage.setItem("lead_gen_active_tab", tab); }, [tab]);
 
   const handleRunDone = useCallback((data) => {
     setRuns((prev) =>
