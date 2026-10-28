@@ -5,7 +5,10 @@ export default function MultiSelect({
   options = [],
   selected = [],
   onChange,
-  placeholder = "Select roles..."
+  placeholder = "Select options...",
+  searchPlaceholder = "Search...",
+  noOptionsText = "No options found",
+  showSearch = true,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -44,8 +47,6 @@ export default function MultiSelect({
 
   const handleSelectAll = (e) => {
     e.stopPropagation();
-    // Select all filtered options, or all options?
-    // Select all available options
     onChange([...options]);
   };
 
@@ -54,7 +55,7 @@ export default function MultiSelect({
   );
 
   return (
-    <div className="multiselect-container" ref={containerRef}>
+    <div className={`multiselect-container ${isOpen ? "open is-open" : ""}`} ref={containerRef}>
       <div
         className={`multiselect-trigger ${isOpen ? "open" : ""}`}
         onClick={() => setIsOpen(!isOpen)}
@@ -94,17 +95,19 @@ export default function MultiSelect({
 
       {isOpen && (
         <div className="multiselect-dropdown">
-          <div className="multiselect-search-container">
-            <input
-              type="text"
-              className="multiselect-search-input"
-              placeholder="Search roles..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              autoFocus
-            />
-          </div>
+          {showSearch && (
+            <div className="multiselect-search-container">
+              <input
+                type="text"
+                className="multiselect-search-input"
+                placeholder={searchPlaceholder}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                autoFocus
+              />
+            </div>
+          )}
           
           <div className="multiselect-bulk-actions">
             <button
@@ -126,7 +129,7 @@ export default function MultiSelect({
 
           <div className="multiselect-options-list">
             {filteredOptions.length === 0 ? (
-              <div className="multiselect-no-options">No roles found</div>
+              <div className="multiselect-no-options">{noOptionsText}</div>
             ) : (
               filteredOptions.map((option) => {
                 const isChecked = selected.includes(option);

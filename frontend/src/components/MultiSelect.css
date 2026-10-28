@@ -3,6 +3,10 @@
   width: 100%;
 }
 
+.multiselect-container.is-open {
+  z-index: 50;
+}
+
 .multiselect-trigger {
   display: flex;
   align-items: center;

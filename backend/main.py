@@ -47,7 +47,7 @@ app.add_middleware(
 # ── Request Models ─────────────────────────────────────────────
 class ScrapeInput(BaseModel):
     keywords: Union[List[str], str] = ["Customer Support Specialist"]
-    location: str = "Europe"
+    location: Union[List[str], str] = ["Europe"]
     experience_levels: Union[List[str], str] = ["entry-level", "associate"]
     work_types: Union[List[str], str] = ["remote"]
     published_at: str = "r604800"   # last 7 days

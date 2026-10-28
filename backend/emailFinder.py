@@ -7,7 +7,9 @@ load_dotenv()  # Load environment variables from .env file
 
 def get_client():
     token = os.getenv("APIFY_KEY_2") or os.getenv("APIFY_KEY_1") or os.getenv("APIFY_KEY") or os.getenv("APIFY_TOKEN")
-    return ApifyClient(token)
+    if not token or not token.strip():
+        raise ValueError("Apify API key is missing! Please configure APIFY_KEY_2 or APIFY_KEY_1 in your environment variables on Render.")
+    return ApifyClient(token.strip().strip('"').strip("'"))
 
 
 def get_email_from_linkedin_profile(profile_url):

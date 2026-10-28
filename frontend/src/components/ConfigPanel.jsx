@@ -1,5 +1,7 @@
 import MultiSelect from "./MultiSelect";
 import { AVAILABLE_ROLES } from "../constants/roles";
+import { AVAILABLE_LOCATIONS } from "../constants/locations";
+import { AVAILABLE_WORK_TYPES } from "../constants/workTypes";
 
 export default function ConfigPanel({ config, onChange }) {
   const set = (key, val) => onChange({ ...config, [key]: val });
@@ -19,13 +21,36 @@ export default function ConfigPanel({ config, onChange }) {
     ? config.keywords.split(",").map((s) => s.trim()).filter(Boolean)
     : [];
 
+  const locationArray = Array.isArray(config.location)
+    ? config.location
+    : typeof config.location === "string" && config.location.trim()
+    ? config.location.split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
+
   const expVal = Array.isArray(config.experience_levels)
     ? config.experience_levels.join(", ")
     : config.experience_levels || "";
 
-  const wtVal = Array.isArray(config.work_types)
-    ? config.work_types.join(", ")
-    : config.work_types || "";
+  const workTypesArray = Array.isArray(config.work_types)
+    ? config.work_types.map((w) => {
+        const lower = String(w).toLowerCase().replace(/[^a-z]/g, "");
+        if (lower === "remote") return "Remote";
+        if (lower === "hybrid") return "Hybrid";
+        if (lower === "onsite") return "Onsite";
+        return w;
+      })
+    : typeof config.work_types === "string" && config.work_types.trim()
+    ? config.work_types
+        .split(",")
+        .map((s) => {
+          const lower = s.trim().toLowerCase().replace(/[^a-z]/g, "");
+          if (lower === "remote") return "Remote";
+          if (lower === "hybrid") return "Hybrid";
+          if (lower === "onsite") return "Onsite";
+          return s.trim();
+        })
+        .filter(Boolean)
+    : [];
 
   return (
     <div className="config-grid">
@@ -41,11 +66,13 @@ export default function ConfigPanel({ config, onChange }) {
 
       <div className="config-field">
         <label>Location</label>
-        <input
-          type="text"
-          value={config.location}
-          onChange={(e) => set("location", e.target.value)}
-          placeholder="e.g. Europe, Germany, Asia"
+        <MultiSelect
+          options={AVAILABLE_LOCATIONS}
+          selected={locationArray}
+          onChange={(val) => set("location", val)}
+          placeholder="Select locations..."
+          searchPlaceholder="Search locations..."
+          noOptionsText="No locations found"
         />
       </div>
 
@@ -61,11 +88,14 @@ export default function ConfigPanel({ config, onChange }) {
 
       <div className="config-field">
         <label>Work Types</label>
-        <input
-          type="text"
-          value={wtVal}
-          onChange={(e) => handleArrayInput("work_types", e.target.value)}
-          placeholder="e.g. remote, hybrid"
+        <MultiSelect
+          options={AVAILABLE_WORK_TYPES}
+          selected={workTypesArray}
+          onChange={(val) => set("work_types", val)}
+          placeholder="Select work types..."
+          searchPlaceholder="Search work types..."
+          noOptionsText="No work types found"
+          showSearch={false}
         />
       </div>
 

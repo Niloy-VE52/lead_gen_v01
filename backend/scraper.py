@@ -13,7 +13,9 @@ load_dotenv()
 
 def get_client():
     token = os.getenv("APIFY_KEY_1") or os.getenv("APIFY_KEY")
-    return ApifyClient(token)
+    if not token or not token.strip():
+        raise ValueError("Apify API key is missing! Please configure APIFY_KEY_1 (or APIFY_KEY) in your environment variables on Render.")
+    return ApifyClient(token.strip().strip('"').strip("'"))
 
 # ── Helpers ────────────────────────────────────────────────────
 
@@ -96,6 +98,22 @@ def scrape_linkedin_jobs(config: dict, status_cb=None) -> list[dict]:
     else:
         wt_list = ["remote"]
 
+    ALLOWED_WT = {"remote", "hybrid", "office"}
+    WT_MAP = {
+        "remote": "remote",
+        "hybrid": "hybrid",
+        "onsite": "office",
+        "on-site": "office",
+        "on site": "office",
+        "office": "office",
+    }
+    normalized_wt = []
+    for w in wt_list:
+        mapped = WT_MAP.get(str(w).lower().strip(), str(w).lower().strip())
+        if mapped in ALLOWED_WT and mapped not in normalized_wt:
+            normalized_wt.append(mapped)
+    wt_list = normalized_wt if normalized_wt else ["remote"]
+
     # Normalize experience levels to allowed values for the new actor
     ALLOWED_EXP = {"internship", "entry", "associate", "mid-senior", "director", "executive"}
     EXP_MAP = {
@@ -151,8 +169,43 @@ def scrape_linkedin_jobs(config: dict, status_cb=None) -> list[dict]:
         ],
     }
 
-    raw_location = config.get("location", "Europe").strip()
-    locations_list = CONTINENT_MAP.get(raw_location.lower(), [raw_location])
+    LOCATION_MAP = {
+        "uk": ["United Kingdom"],
+        "united kingdom": ["United Kingdom"],
+        "usa": ["United States"],
+        "us": ["United States"],
+        "united states": ["United States"],
+        "australia": ["Australia"],
+    }
+
+    raw_location = config.get("location", ["Europe"])
+    if isinstance(raw_location, str):
+        loc_inputs = [l.strip() for l in raw_location.split(",") if l.strip()]
+    elif isinstance(raw_location, list):
+        loc_inputs = [l.strip() for l in raw_location if isinstance(l, str) and l.strip()]
+    else:
+        loc_inputs = ["Europe"]
+
+    final_locations = []
+    for loc in loc_inputs:
+        loc_lower = loc.lower()
+        if loc_lower in CONTINENT_MAP:
+            final_locations.extend(CONTINENT_MAP[loc_lower])
+        elif loc_lower in LOCATION_MAP:
+            final_locations.extend(LOCATION_MAP[loc_lower])
+        else:
+            final_locations.append(loc)
+
+    # Deduplicate while preserving order
+    seen_loc = set()
+    locations_list = []
+    for loc in final_locations:
+        if loc not in seen_loc:
+            seen_loc.add(loc)
+            locations_list.append(loc)
+
+    if not locations_list:
+        locations_list = ["United States"]
 
     run_input = {
         "jobTitles": keywords_list,

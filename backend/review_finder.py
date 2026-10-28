@@ -14,8 +14,9 @@ ACTOR_URL = (
 
 
 def get_reviews(company_name: str) -> str:
-    """Fetches up to 5 Glassdoor reviews and returns them as a concatenated string."""
     apify_token = os.getenv("APIFY_KEY_1") or os.getenv("APIFY_KEY")
+    if apify_token:
+        apify_token = apify_token.strip().strip('"').strip("'")
     try:
         payload = {"Keyword": company_name, "ItemLimit": 5}
         r = requests.post(
