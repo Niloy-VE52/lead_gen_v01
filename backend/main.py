@@ -28,6 +28,7 @@ import asyncio
 
 from backend.pipeline import run_full_pipeline, run_scoring_pipeline
 from backend.job_store import job_status_store
+from backend.apify_manager import apify_manager
 
 app = FastAPI(title="Job Scraper & Scorer API", version="1.0.0")
 
@@ -56,12 +57,14 @@ class ScrapeInput(BaseModel):
     max_employees: int = 1000
     outreach_mode: str = "test"    # "test" (redirect to test inbox) or "live" (real prospect email)
     test_email_recipient: Optional[str] = "niloyvetesting54@gmail.com"
+    apify_mode: str = "test"       # "test" (numbered pool) or "live" (single premium key)
 
 
 class ScoreInput(BaseModel):
     job_id: Optional[str] = None   # score a specific job by jobId; None = score all unscored
     outreach_mode: str = "test"
     test_email_recipient: Optional[str] = "niloyvetesting54@gmail.com"
+    apify_mode: str = "test"       # "test" (numbered pool) or "live" (single premium key)
 
 
 class ManualSendInput(BaseModel):
@@ -81,14 +84,17 @@ class RegenerateEmailInput(BaseModel):
     email: Optional[str] = ""
 
 
-
-
-
 # ── Routes ─────────────────────────────────────────────────────
 
 @app.get("/")
 def root():
     return {"message": "Job Scraper & Scorer API is running 🚀"}
+
+
+@app.get("/apify-status")
+def get_apify_status():
+    """Returns current Apify pool balance headroom and health status."""
+    return apify_manager.preflight_check()
 
 
 @app.post("/run-pipeline")
@@ -100,6 +106,22 @@ async def run_pipeline(input_data: ScrapeInput, background_tasks: BackgroundTask
     3. Apollo funding checker
     Results are stored in Google Sheet: 'Scraped_Jobs_V05'
     """
+    # ── Pre-Flight Balance Validation ──
+    target_mode = (input_data.apify_mode or "test").strip().lower()
+    apify_manager.set_mode(target_mode)
+
+    preflight = apify_manager.preflight_check()
+    if not preflight.get("success"):
+        error_msg = (
+            preflight.get("error")
+            or (
+                f"Pipeline Aborted: All Apify test keys (1 to {preflight.get('total_keys', 'N')}) are exhausted or have insufficient credit (< $0.15 headroom). Please add a fresh key."
+                if target_mode == "test"
+                else "Pipeline Aborted: APIFY_PREMIUM_KEY has insufficient credit, is exhausted, or is missing."
+            )
+        )
+        raise HTTPException(status_code=400, detail=error_msg)
+
     run_id = str(uuid.uuid4())[:8]
     job_status_store[run_id] = {"status": "running", "step": "Starting...", "run_id": run_id}
 
@@ -119,6 +141,9 @@ async def run_scoring(input_data: ScoreInput, background_tasks: BackgroundTasks)
     If job_id is None: scores all unscored rows one by one.
     If job_id is provided: scores only that specific job.
     """
+    target_mode = (input_data.apify_mode or "test").strip().lower()
+    apify_manager.set_mode(target_mode)
+
     run_id = str(uuid.uuid4())[:8]
     job_status_store[run_id] = {"status": "running", "step": "Starting scorer...", "run_id": run_id}
 
@@ -144,6 +169,22 @@ async def run_full(input_data: ScrapeInput, background_tasks: BackgroundTasks):
     Runs the COMPLETE pipeline end-to-end:
     Scrape → Reviews → Funding → Score → Auto Find Emails → Outreach
     """
+    # ── Pre-Flight Balance Validation ──
+    target_mode = (input_data.apify_mode or "test").strip().lower()
+    apify_manager.set_mode(target_mode)
+
+    preflight = apify_manager.preflight_check()
+    if not preflight.get("success"):
+        error_msg = (
+            preflight.get("error")
+            or (
+                f"Pipeline Aborted: All Apify test keys (1 to {preflight.get('total_keys', 'N')}) are exhausted or have insufficient credit (< $0.15 headroom). Please add a fresh key."
+                if target_mode == "test"
+                else "Pipeline Aborted: APIFY_PREMIUM_KEY has insufficient credit, is exhausted, or is missing."
+            )
+        )
+        raise HTTPException(status_code=400, detail=error_msg)
+
     run_id = str(uuid.uuid4())[:8]
     job_status_store[run_id] = {"status": "running", "step": "Starting full pipeline...", "run_id": run_id}
 
@@ -279,8 +320,3 @@ def regenerate_email_endpoint(payload: RegenerateEmailInput):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-
-
-

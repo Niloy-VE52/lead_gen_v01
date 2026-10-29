@@ -6,16 +6,14 @@ from datetime import datetime
 from urllib.parse import urlparse, parse_qs, unquote
 from rapidfuzz import fuzz
 
-
 from dotenv import load_dotenv
 load_dotenv()
 
+from backend.apify_manager import apify_manager
+
 
 def get_client():
-    token = os.getenv("APIFY_KEY_1") or os.getenv("APIFY_KEY")
-    if not token or not token.strip():
-        raise ValueError("Apify API key is missing! Please configure APIFY_KEY_1 (or APIFY_KEY) in your environment variables on Render.")
-    return ApifyClient(token.strip().strip('"').strip("'"))
+    return apify_manager.get_client()
 
 # ── Helpers ────────────────────────────────────────────────────
 
@@ -69,8 +67,6 @@ FIELDS = [
 # ── Step 1: LinkedIn scraper ───────────────────────────────────
 
 def scrape_linkedin_jobs(config: dict, status_cb=None) -> list[dict]:
-    client = get_client()
-
     raw_keywords = config.get("keywords")
     if isinstance(raw_keywords, str):
         keywords_list = [k.strip() for k in raw_keywords.split(",") if k.strip()]
@@ -226,9 +222,7 @@ def scrape_linkedin_jobs(config: dict, status_cb=None) -> list[dict]:
     if status_cb:
         status_cb("🚀 Running LinkedIn Jobs scraper...")
 
-    run = client.actor("zn01OAlzP853oqn4Z").call(run_input=run_input)
-    dataset_id = run["defaultDatasetId"] if isinstance(run, dict) else getattr(run, "defaultDatasetId", None) or run["defaultDatasetId"]
-    raw_results = list(client.dataset(dataset_id).iterate_items())
+    raw_results = apify_manager.call_actor("zn01OAlzP853oqn4Z", run_input=run_input, status_cb=status_cb)
 
     if status_cb:
         status_cb(f"✅ Scraped {len(raw_results)} raw jobs")
@@ -274,8 +268,6 @@ def scrape_linkedin_jobs(config: dict, status_cb=None) -> list[dict]:
 # ── Step 2: Repeatability check ───────────────────────────────
 
 def check_repeatability(extracted: list[dict], status_cb=None) -> list[dict]:
-    client = get_client()
-
     # Build company → unique search strings map
     company_to_titles = {}
     for row in extracted:
@@ -310,9 +302,7 @@ def check_repeatability(extracted: list[dict], status_cb=None) -> list[dict]:
         }
 
         try:
-            repeat_run = client.actor("JkfTWxtpgfvcRQn3p").call(run_input=repeat_input)
-            repeat_dataset_id = repeat_run["defaultDatasetId"] if isinstance(repeat_run, dict) else getattr(repeat_run, "defaultDatasetId", None) or repeat_run["defaultDatasetId"]
-            items = list(client.dataset(repeat_dataset_id).iterate_items())
+            items = apify_manager.call_actor("JkfTWxtpgfvcRQn3p", run_input=repeat_input, status_cb=status_cb)
             titles = [item.get("job_title") or item.get("jobTitle") or "" for item in items]
             company_job_titles[company] = [t.lower().strip() for t in titles if t]
         except Exception as e:

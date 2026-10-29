@@ -9,6 +9,7 @@ export const DEFAULT_CONFIG = {
   max_employees: 1000,
   outreach_mode: "test", // "test" (safe redirect) or "live" (real prospect emails)
   test_email_recipient: "niloyvetesting54@gmail.com",
+  apify_mode: "test",    // "test" (numbered free pool) or "live" (single premium key)
 };
 
 export const PIPELINE_STEPS = [

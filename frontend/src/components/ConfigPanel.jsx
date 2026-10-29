@@ -82,7 +82,7 @@ export default function ConfigPanel({ config, onChange }) {
           type="text"
           value={expVal}
           onChange={(e) => handleArrayInput("experience_levels", e.target.value)}
-          placeholder="e.g. entry-level, associate"
+          placeholder="e.g. entry-level, associate (comma separated)"
         />
       </div>
 
@@ -95,7 +95,6 @@ export default function ConfigPanel({ config, onChange }) {
           placeholder="Select work types..."
           searchPlaceholder="Search work types..."
           noOptionsText="No work types found"
-          showSearch={false}
         />
       </div>
 
@@ -136,6 +135,61 @@ export default function ConfigPanel({ config, onChange }) {
           <option value="r604800">Last 7 days</option>
           <option value="r2592000">Last 30 days</option>
         </select>
+      </div>
+
+      {/* ── Apify Key & Account Mode Settings ── */}
+      <div className="outreach-settings-card">
+        <div className="outreach-settings-header">
+          <div className="outreach-settings-title">
+            <span>🔑 Apify Key & Account Mode</span>
+            <span className={`outreach-mode-pill ${config.apify_mode === "live" ? "pill-live" : "pill-test"}`}>
+              {config.apify_mode === "live" ? "👑 Premium Single Key" : "🧪 Free Key Pool"}
+            </span>
+          </div>
+          <p className="outreach-settings-desc">
+            Choose whether to distribute actor runs across your numbered free accounts (with automated zero-downtime failover) or route directly to your single premium subscription key.
+          </p>
+        </div>
+
+        <div className="outreach-toggle-group">
+          <label className={`outreach-toggle-option ${config.apify_mode !== "live" ? "active" : ""}`}>
+            <input
+              type="radio"
+              name="apify_mode"
+              value="test"
+              checked={config.apify_mode !== "live"}
+              onChange={() => set("apify_mode", "test")}
+            />
+            <div className="option-text">
+              <strong>🧪 Free Key Pool (Distributed)</strong>
+              <span>Rotates across APIFY_KEY_1...N with automatic mid-run quota failover</span>
+            </div>
+          </label>
+
+          <label className={`outreach-toggle-option ${config.apify_mode === "live" ? "active" : ""}`}>
+            <input
+              type="radio"
+              name="apify_mode"
+              value="live"
+              checked={config.apify_mode === "live"}
+              onChange={() => set("apify_mode", "live")}
+            />
+            <div className="option-text">
+              <strong>👑 Premium Live Key</strong>
+              <span>Routes all 5 actors directly to single dedicated APIFY_PREMIUM_KEY</span>
+            </div>
+          </label>
+        </div>
+
+        {config.apify_mode === "live" ? (
+          <div className="outreach-live-warning">
+            👑 <strong>Premium Key Active:</strong> All 5 pipeline scrapers and extractors will run using <code>APIFY_PREMIUM_KEY</code>.
+          </div>
+        ) : (
+          <div className="field-hint" style={{ marginTop: "4px" }}>
+            ⚡ <strong>Smart Headroom & Failover:</strong> Pre-flight checks inspect free balances before scraping; mid-run 402/429 limits hot-swap accounts in-flight with zero restart.
+          </div>
+        )}
       </div>
 
       {/* ── Outreach Delivery Settings ── */}
